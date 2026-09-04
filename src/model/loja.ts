@@ -1,5 +1,3 @@
-
-
 import { model, Schema } from 'mongoose';
 
 export type StatusLoja =
@@ -16,6 +14,7 @@ export interface Loja {
   id: string;
   nome: string;
   descricao?: string;
+  categoria: string;
   proprietarioId: string;
   status: StatusLoja;
   funcionamento: FuncionamentoLoja;
@@ -32,6 +31,12 @@ const lojaSchema = new Schema(
 
     descricao: {
       type: String,
+      trim: true
+    },
+
+    categoria: {
+      type: String,
+      required: true,
       trim: true
     },
 
@@ -71,5 +76,7 @@ const lojaSchema = new Schema(
   }
 );
 
-export const LojaModel = model<Loja>('Loja', lojaSchema);
-
+export const LojaModel = model<Loja>(
+  'Loja',
+  lojaSchema
+);

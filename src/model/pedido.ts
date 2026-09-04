@@ -16,12 +16,23 @@ export interface ItemPedido {
   subtotal: number;
 }
 
+export interface EnderecoEntrega {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
 export interface Pedido {
   id: string;
   usuarioId: string;
   lojaId: string;
   itens: ItemPedido[];
   valorTotal: number;
+  enderecoEntrega: EnderecoEntrega;
   status: StatusPedido;
   criadoEm: Date;
 }
@@ -62,6 +73,54 @@ const itemPedidoSchema = new Schema(
   }
 );
 
+const enderecoEntregaSchema = new Schema(
+  {
+    cep: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    logradouro: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    numero: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    complemento: {
+      type: String,
+      trim: true
+    },
+
+    bairro: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    cidade: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    estado: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  },
+  {
+    _id: false
+  }
+);
+
 const pedidoSchema = new Schema(
   {
     usuarioId: {
@@ -89,6 +148,11 @@ const pedidoSchema = new Schema(
       type: Number,
       required: true,
       min: 0
+    },
+
+    enderecoEntrega: {
+      type: enderecoEntregaSchema,
+      required: true
     },
 
     status: {

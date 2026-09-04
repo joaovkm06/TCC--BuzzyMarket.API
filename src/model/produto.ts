@@ -5,6 +5,7 @@ export interface Produto {
   lojaId: string;
   nome: string;
   descricao?: string;
+  categoria: string;
   preco: number;
   estoque: number;
   imagem?: string;
@@ -28,6 +29,12 @@ const produtoSchema = new Schema(
 
     descricao: {
       type: String,
+      trim: true
+    },
+
+    categoria: {
+      type: String,
+      required: true,
       trim: true
     },
 
