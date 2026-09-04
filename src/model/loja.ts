@@ -1,12 +1,16 @@
+
+
 import { model, Schema } from 'mongoose';
 
 export type StatusLoja =
   | 'pendente'
   | 'aprovada'
   | 'rejeitada'
-  | 'bloqueada'
-  | 'Aberta'
-  | 'fechada'
+  | 'bloqueada';
+
+export type FuncionamentoLoja =
+  | 'aberta'
+  | 'fechada';
 
 export interface Loja {
   id: string;
@@ -14,6 +18,7 @@ export interface Loja {
   descricao?: string;
   proprietarioId: string;
   status: StatusLoja;
+  funcionamento: FuncionamentoLoja;
   criadoEm: Date;
 }
 
@@ -42,12 +47,19 @@ const lojaSchema = new Schema(
         'pendente',
         'aprovada',
         'rejeitada',
-        'bloqueada',
-        'Aberta',
-        'fechada',
-
+        'bloqueada'
       ],
       default: 'pendente',
+      required: true
+    },
+
+    funcionamento: {
+      type: String,
+      enum: [
+        'aberta',
+        'fechada'
+      ],
+      default: 'fechada',
       required: true
     }
   },
@@ -60,3 +72,4 @@ const lojaSchema = new Schema(
 );
 
 export const LojaModel = model<Loja>('Loja', lojaSchema);
+

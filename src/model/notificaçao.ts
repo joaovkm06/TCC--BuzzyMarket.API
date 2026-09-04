@@ -1,25 +1,39 @@
 import { model, Schema } from 'mongoose';
 
 export type TipoNotificacao =
-  | 'loja_pendente'
-  | 'loja_aprovada'
-  | 'loja_rejeitada'
+  | 'loja'
   | 'pedido'
   | 'pagamento'
-  | 'sistema';
+  | 'sistema'
+  | 'personalizada';
 
 export interface Notificacao {
   id: string;
+
+  remetenteId?: string;
+
   usuarioId: string;
+
   titulo: string;
+
   mensagem: string;
+
   tipo: TipoNotificacao;
+
   lida: boolean;
+
   criadoEm: Date;
 }
 
 const notificacaoSchema = new Schema(
   {
+   
+    remetenteId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+
+    // Quem recebeu
     usuarioId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -41,12 +55,11 @@ const notificacaoSchema = new Schema(
     tipo: {
       type: String,
       enum: [
-        'loja_pendente',
-        'loja_aprovada',
-        'loja_rejeitada',
+        'loja',
         'pedido',
         'pagamento',
-        'sistema'
+        'sistema',
+        'personalizada'
       ],
       required: true
     },
