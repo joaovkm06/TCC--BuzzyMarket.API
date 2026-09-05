@@ -1,9 +1,12 @@
+
 import { model, Schema } from 'mongoose';
 
 export interface ItemCarrinho {
   produtoId: string;
+  nome: string;
+  preco: number;
+  imagem?: string;
   quantidade: number;
-  
 }
 
 export interface Carrinho {
@@ -21,12 +24,28 @@ const itemCarrinhoSchema = new Schema(
       required: true
     },
 
+    nome: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    preco: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+
+    imagem: {
+      type: String,
+      trim: true
+    },
+
     quantidade: {
       type: Number,
       required: true,
       min: 1
-    },
-   
+    }
   },
   {
     _id: false

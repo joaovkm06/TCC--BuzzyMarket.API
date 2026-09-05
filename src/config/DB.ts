@@ -1,4 +1,3 @@
-
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -7,11 +6,15 @@ dotenv.config({
 });
 
 const env = {
-  port: process.env.PORT || '3000',
+  port: process.env.PORT || '6767',
 
   mongoUri: process.env.MONGO_URI || ''
 };
 
+if (!env.mongoUri) {
+  throw new Error(
+    'MONGO_URI nao foi configurada no arquivo .env'
+  );
+}
+
 export default env;
-
-
