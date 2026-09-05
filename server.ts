@@ -1,10 +1,6 @@
-import express from 'express';
-import env from './src/config/DB';
 import mongoose from 'mongoose';
-
-const app = express();
-
-app.use(express.json());
+import app from './app';
+import env from './src/config/DB';
 
 async function connectDatabase(): Promise<void> {
   try {
