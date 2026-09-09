@@ -15,9 +15,7 @@ import {
 const router = Router();
 
 
-// ==========================================
-// PRODUTOS
-// ==========================================
+
 
 // Criar produto
 router.post(

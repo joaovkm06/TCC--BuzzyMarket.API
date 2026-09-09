@@ -15,9 +15,6 @@ import {
 const router = Router();
 
   
-// ==========================================
-// LOJAS
-// ==========================================
 
 // Criar loja
 router.post(
@@ -33,8 +30,7 @@ router.get(
 );
 
 
-// Verificar se está aberta
-// IMPORTANTE: antes de /:id
+
 router.get(
   '/:id/aberta',
   verificarLojaAberta
