@@ -1,4 +1,6 @@
-import { model, Schema } from 'mongoose';
+
+
+import { model, Schema, Types } from 'mongoose';
 
 export type StatusPedido =
   | 'pendente'
@@ -9,7 +11,7 @@ export type StatusPedido =
   | 'cancelado';
 
 export interface ItemPedido {
-  produtoId: string;
+  produtoId: Types.ObjectId;
   nome: string;
   quantidade: number;
   preco: number;
@@ -28,8 +30,8 @@ export interface EnderecoEntrega {
 
 export interface Pedido {
   id: string;
-  usuarioId: string;
-  lojaId: string;
+  usuarioId: Types.ObjectId;
+  lojaId: Types.ObjectId;
   itens: ItemPedido[];
   valorTotal: number;
   enderecoEntrega: EnderecoEntrega;
@@ -37,7 +39,7 @@ export interface Pedido {
   criadoEm: Date;
 }
 
-const itemPedidoSchema = new Schema(
+const itemPedidoSchema = new Schema<ItemPedido>(
   {
     produtoId: {
       type: Schema.Types.ObjectId,
@@ -47,7 +49,8 @@ const itemPedidoSchema = new Schema(
 
     nome: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     quantidade: {
@@ -73,7 +76,7 @@ const itemPedidoSchema = new Schema(
   }
 );
 
-const enderecoEntregaSchema = new Schema(
+const enderecoEntregaSchema = new Schema<EnderecoEntrega>(
   {
     cep: {
       type: String,
@@ -95,6 +98,7 @@ const enderecoEntregaSchema = new Schema(
 
     complemento: {
       type: String,
+      required: false,
       trim: true
     },
 
@@ -121,7 +125,7 @@ const enderecoEntregaSchema = new Schema(
   }
 );
 
-const pedidoSchema = new Schema(
+const pedidoSchema = new Schema<Pedido>(
   {
     usuarioId: {
       type: Schema.Types.ObjectId,
@@ -138,8 +142,12 @@ const pedidoSchema = new Schema(
     itens: {
       type: [itemPedidoSchema],
       required: true,
+
       validate: {
-        validator: (itens: ItemPedido[]) => itens.length > 0,
+        validator: (itens: ItemPedido[]) => {
+          return itens.length > 0;
+        },
+
         message: 'O pedido precisa possuir pelo menos um item.'
       }
     },
@@ -169,6 +177,7 @@ const pedidoSchema = new Schema(
       required: true
     }
   },
+
   {
     timestamps: {
       createdAt: 'criadoEm',

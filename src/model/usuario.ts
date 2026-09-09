@@ -1,7 +1,8 @@
-import { model, Schema, Document } from 'mongoose';
+import { model, Schema, Document, Types } from 'mongoose';
 
 export enum UserProfile {
   Cliente = 'cliente',
+  Funcionario = 'funcionario',
   Logista = 'logista',
   ADMIN = 'admin'
 }
@@ -22,6 +23,7 @@ export interface User extends Document {
   senhaHash: string;
   perfil: UserProfile;
   endereco?: Endereco;
+  lojaId?: Types.ObjectId;
 }
 
 const enderecoSchema = new Schema<Endereco>(
@@ -96,6 +98,12 @@ const userSchema = new Schema<User>(
 
     endereco: {
       type: enderecoSchema,
+      required: false
+    },
+
+    lojaId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Loja',
       required: false
     }
   },
