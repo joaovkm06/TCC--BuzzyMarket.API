@@ -1,10 +1,13 @@
+
 import { Request, Response } from 'express';
 
 import * as userService from '../service/UserService';
+import { UserProfile } from '../model/usuario';
 
 
 // ======================================================
 // POST /users
+// CADASTRO PÚBLICO DE CLIENTE
 // ======================================================
 
 export async function criarUsuario(
@@ -13,11 +16,18 @@ export async function criarUsuario(
 ) {
   try {
 
-    const usuario =
-      await userService.criarUsuario(req.body);
+    // IMPORTANTE:
+    // A rota pública SEMPRE cria cliente.
+    // Mesmo que alguém envie perfil: "admin",
+    // o servidor vai ignorar e usar cliente.
+
+    const usuario = await userService.criarUsuario({
+      ...req.body,
+      perfil: UserProfile.Cliente
+    });
 
     return res.status(201).json({
-      mensagem: 'Usuário criado com sucesso.',
+      mensagem: 'Cliente criado com sucesso.',
       usuario
     });
 
@@ -45,7 +55,135 @@ export async function criarUsuario(
 
 
 // ======================================================
+// POST /users/lojista
+// CADASTRO PÚBLICO DE LOJISTA
+// ======================================================
+
+export async function criarLogista(
+  req: Request,
+  res: Response
+) {
+  try {
+
+    // A rota força o perfil de lojista.
+
+    const usuario = await userService.criarUsuario({
+      ...req.body,
+      perfil: UserProfile.Logista
+    });
+
+    return res.status(201).json({
+      mensagem: 'Lojista criado com sucesso.',
+      usuario
+    });
+
+  } catch (error: any) {
+
+    console.error(
+      'Erro ao criar lojista:',
+      error
+    );
+
+    return res.status(
+      error.status || 400
+    ).json({
+      mensagem:
+        error.message ||
+        'Não foi possível criar o lojista.'
+    });
+  }
+}
+
+
+// ======================================================
+// POST /users/funcionario
+// CRIAR FUNCIONÁRIO
+// ======================================================
+
+export async function criarFuncionario(
+  req: Request,
+  res: Response
+) {
+  try {
+
+    // A rota força o perfil de funcionário.
+
+    const funcionario =
+      await userService.criarUsuario({
+        ...req.body,
+        perfil: UserProfile.Funcionario
+      });
+
+    return res.status(201).json({
+      mensagem: 'Funcionário criado com sucesso.',
+      usuario: funcionario
+    });
+
+  } catch (error: any) {
+
+    console.error(
+      'Erro ao criar funcionário:',
+      error
+    );
+
+    return res.status(
+      error.status || 400
+    ).json({
+      mensagem:
+        error.message ||
+        'Não foi possível criar o funcionário.'
+    });
+  }
+}
+
+
+// ======================================================
+// POST /users/admin
+// CRIAR ADMINISTRADOR
+// SOMENTE ADMIN
+// ======================================================
+
+export async function criarAdmin(
+  req: Request,
+  res: Response
+) {
+  try {
+
+    // A rota força o perfil de administrador.
+
+    const admin =
+      await userService.criarUsuario({
+        ...req.body,
+        perfil: UserProfile.ADMIN
+      });
+
+    return res.status(201).json({
+      mensagem: 'Administrador criado com sucesso.',
+      usuario: admin
+    });
+
+  } catch (error: any) {
+
+    console.error(
+      'Erro ao criar administrador:',
+      error
+    );
+
+    return res.status(
+      error.status || 400
+    ).json({
+      mensagem:
+        error.message ||
+        'Não foi possível criar o administrador.'
+    });
+  }
+}
+
+
+// ======================================================
 // GET /users
+// LISTAR USUÁRIOS
+// SOMENTE ADMIN
 // ======================================================
 
 export async function listarUsuarios(
@@ -79,6 +217,7 @@ export async function listarUsuarios(
 
 // ======================================================
 // GET /users/:id
+// BUSCAR USUÁRIO
 // ======================================================
 
 export async function buscarUsuario(
@@ -121,6 +260,7 @@ export async function buscarUsuario(
 
 // ======================================================
 // PUT /users/:id
+// ATUALIZAR USUÁRIO
 // ======================================================
 
 export async function atualizarUsuario(
@@ -181,6 +321,8 @@ export async function atualizarUsuario(
 
 // ======================================================
 // DELETE /users/:id
+// EXCLUIR USUÁRIO
+// SOMENTE ADMIN
 // ======================================================
 
 export async function excluirUsuario(
@@ -191,7 +333,7 @@ export async function excluirUsuario(
 
     const usuario =
       await userService.excluirUsuario(
-      String(req.params.id)
+        String(req.params.id)
       );
 
     if (!usuario) {
@@ -230,3 +372,66 @@ export async function excluirUsuario(
     });
   }
 }
+
+// ======================================================
+// PATCH /users/:id/funcionario
+// CONTRATAR CLIENTE COMO FUNCIONÁRIO
+// ======================================================
+
+export async function contratarFuncionario(
+  req: Request,
+  res: Response
+) {
+  try {
+
+    // O middleware autenticar colocou o usuário
+    // logado dentro de req.usuario.
+
+    const usuarioLogado = (req as any).usuario;
+
+    if (!usuarioLogado) {
+      return res.status(401).json({
+        mensagem: 'Usuário não autenticado.'
+      });
+    }
+
+
+    // Se for ADMIN, pode informar lojaId.
+    // Se for LOJISTA, o service ignora esse valor
+    // e usa a loja vinculada ao próprio lojista.
+
+    const lojaId =
+      req.body?.lojaId;
+
+
+    const funcionario =
+      await userService.contratarClienteComoFuncionario(
+        String(req.params.id),
+        String(usuarioLogado.id),
+        lojaId
+      );
+
+
+    return res.status(200).json({
+      mensagem:
+        'Cliente contratado como funcionário com sucesso.',
+      usuario: funcionario
+    });
+
+  } catch (error: any) {
+
+    console.error(
+      'Erro ao contratar funcionário:',
+      error
+    );
+
+    return res.status(
+      error.status || 400
+    ).json({
+      mensagem:
+        error.message ||
+        'Não foi possível contratar o funcionário.'
+    });
+  }
+}
+

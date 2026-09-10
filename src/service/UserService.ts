@@ -1,4 +1,10 @@
+
+import bcrypt from 'bcrypt';
+
+import { LojaModel } from '../model/loja';
+
 import {
+  UserModel,
   UserProfile
 } from '../model/usuario';
 
@@ -20,11 +26,48 @@ export async function criarUsuario(
   const {
     nome,
     email,
-    senhaHash,
+    senha,
     perfil,
     endereco,
     lojaId
   } = dados;
+
+
+  // ====================================================
+  // VALIDAR CAMPOS OBRIGATÓRIOS
+  // ====================================================
+
+  if (!nome) {
+    const erro: any = new Error(
+      'Nome é obrigatório.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  if (!email) {
+    const erro: any = new Error(
+      'Email é obrigatório.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  if (!senha) {
+    const erro: any = new Error(
+      'Senha é obrigatória.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
 
 
   // ====================================================
@@ -147,7 +190,6 @@ export async function criarUsuario(
     }
 
 
-    // Verifica se a loja já possui outro proprietário
     if (
       loja.proprietarioId
     ) {
@@ -165,16 +207,62 @@ export async function criarUsuario(
 
 
   // ====================================================
+  // VERIFICAR EMAIL
+  // ====================================================
+
+  const usuarios =
+    await userRepository.listarUsuarios();
+
+  const emailExiste =
+    usuarios.some(
+      (usuario: any) =>
+        usuario.email.toLowerCase() ===
+        email.toLowerCase()
+    );
+
+
+  if (emailExiste) {
+
+    const erro: any =
+      new Error(
+        'Este email já está cadastrado.'
+      );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ====================================================
+  // CRIPTOGRAFAR SENHA
+  // ====================================================
+
+  const senhaHash =
+    await bcrypt.hash(
+      senha,
+      10
+    );
+
+
+  // ====================================================
   // CRIAR USUÁRIO
   // ====================================================
 
   return await userRepository.criarUsuario({
+
     nome,
+
     email,
+
     senhaHash,
+
     perfil,
+
     endereco,
+
     lojaId
+
   });
 }
 
@@ -220,7 +308,7 @@ export async function atualizarUsuario(
   const {
     nome,
     email,
-    senhaHash,
+    senha,
     perfil,
     endereco,
     lojaId
@@ -352,7 +440,6 @@ export async function atualizarUsuario(
   }
 
 
-
   // ====================================================
   // LOGISTA
   // ====================================================
@@ -388,14 +475,10 @@ export async function atualizarUsuario(
       }
 
 
-      // ==================================================
-      // VERIFICAR PROPRIETÁRIO
-      // ==================================================
-
       if (
         loja.proprietarioId &&
         loja.proprietarioId.toString() !==
-          usuarioAtual._id.toString()
+        usuarioAtual._id.toString()
       ) {
 
         const erro: any =
@@ -409,7 +492,6 @@ export async function atualizarUsuario(
       }
     }
   }
-
 
 
   // ====================================================
@@ -447,6 +529,38 @@ export async function atualizarUsuario(
   }
 
 
+  // ====================================================
+  // PREPARAR DADOS
+  // ====================================================
+
+  const dadosAtualizacao: any = {
+
+    nome,
+
+    email,
+
+    perfil: perfilAtualizado,
+
+    endereco,
+
+    lojaId: lojaParaSalvar
+
+  };
+
+
+  // ====================================================
+  // ATUALIZAR SENHA SE FOI INFORMADA
+  // ====================================================
+
+  if (senha) {
+
+    dadosAtualizacao.senhaHash =
+      await bcrypt.hash(
+        senha,
+        10
+      );
+  }
+
 
   // ====================================================
   // ATUALIZAR USUÁRIO
@@ -454,14 +568,7 @@ export async function atualizarUsuario(
 
   return await userRepository.atualizarUsuario(
     id,
-    {
-      nome,
-      email,
-      senhaHash,
-      perfil: perfilAtualizado,
-      endereco,
-      lojaId: lojaParaSalvar
-    }
+    dadosAtualizacao
   );
 }
 
@@ -498,7 +605,6 @@ export async function excluirUsuario(
   }
 
 
-
   // ====================================================
   // VERIFICAR SE É DONO DE UMA LOJA
   // ====================================================
@@ -522,7 +628,6 @@ export async function excluirUsuario(
   }
 
 
-
   // ====================================================
   // EXCLUIR USUÁRIO
   // ====================================================
@@ -531,3 +636,198 @@ export async function excluirUsuario(
     id
   );
 }
+
+
+// ======================================================
+// CONTRATAR CLIENTE COMO FUNCIONÁRIO
+// ======================================================
+
+export async function contratarClienteComoFuncionario(
+  clienteId: string,
+  solicitanteId: string,
+  lojaIdInformada?: string
+) {
+  // ------------------------------------------------------
+  // 1. Buscar quem está fazendo a contratação
+  // ------------------------------------------------------
+
+  const solicitante = await UserModel.findById(solicitanteId);
+
+  if (!solicitante) {
+    const error: any = new Error(
+      'Usuário que está realizando a contratação não foi encontrado.'
+    );
+
+    error.status = 404;
+
+    throw error;
+  }
+
+
+  // ------------------------------------------------------
+  // 2. Buscar o cliente que será contratado
+  // ------------------------------------------------------
+
+  const cliente = await UserModel.findById(clienteId);
+
+  if (!cliente) {
+    const error: any = new Error(
+      'Cliente não encontrado.'
+    );
+
+    error.status = 404;
+
+    throw error;
+  }
+
+
+  // ------------------------------------------------------
+  // 3. Só CLIENTE pode virar FUNCIONÁRIO
+  // ------------------------------------------------------
+
+  if (cliente.perfil !== UserProfile.Cliente) {
+    const error: any = new Error(
+      'Somente usuários com perfil cliente podem ser contratados como funcionário.'
+    );
+
+    error.status = 400;
+
+    throw error;
+  }
+
+
+  // ------------------------------------------------------
+  // 4. Descobrir a loja da contratação
+  // ------------------------------------------------------
+
+  let lojaId: string;
+
+
+  // ------------------------------------------------------
+  // LOJISTA
+  // ------------------------------------------------------
+
+  if (solicitante.perfil === UserProfile.Logista) {
+
+    // O lojista precisa possuir uma loja.
+
+    if (!solicitante.lojaId) {
+      const error: any = new Error(
+        'O lojista não possui uma loja vinculada.'
+      );
+
+      error.status = 400;
+
+      throw error;
+    }
+
+    // IMPORTANTE:
+    // Ignoramos lojaId enviado pelo Postman.
+    // O lojista só pode contratar para a própria loja.
+
+    lojaId = solicitante.lojaId.toString();
+
+  }
+
+
+  // ------------------------------------------------------
+  // ADMIN
+  // ------------------------------------------------------
+
+  else if (solicitante.perfil === UserProfile.ADMIN) {
+
+    // Admin precisa informar qual loja receberá
+    // o novo funcionário.
+
+    if (!lojaIdInformada) {
+      const error: any = new Error(
+        'O administrador precisa informar o lojaId.'
+      );
+
+      error.status = 400;
+
+      throw error;
+    }
+
+    lojaId = lojaIdInformada;
+
+  }
+
+
+  // ------------------------------------------------------
+  // QUALQUER OUTRO PERFIL
+  // ------------------------------------------------------
+
+  else {
+
+    const error: any = new Error(
+      'Você não possui permissão para contratar funcionários.'
+    );
+
+    error.status = 403;
+
+    throw error;
+  }
+
+
+  // ------------------------------------------------------
+  // 5. Verificar se a loja existe
+  // ------------------------------------------------------
+
+  const loja = await LojaModel.findById(lojaId);
+
+  if (!loja) {
+    const error: any = new Error(
+      'Loja não encontrada.'
+    );
+
+    error.status = 404;
+
+    throw error;
+  }
+
+
+  // ------------------------------------------------------
+  // 6. Se for LOJISTA, garantir que a loja pertence a ele
+  // ------------------------------------------------------
+
+  if (solicitante.perfil === UserProfile.Logista) {
+
+    const proprietarioId =
+      loja.proprietarioId?.toString();
+
+    if (
+      proprietarioId !==
+      solicitante._id.toString()
+    ) {
+      const error: any = new Error(
+        'Você só pode contratar funcionários para sua própria loja.'
+      );
+
+      error.status = 403;
+
+      throw error;
+    }
+  }
+
+
+  // ------------------------------------------------------
+  // 7. Transformar CLIENTE em FUNCIONÁRIO
+  // ------------------------------------------------------
+
+  cliente.perfil = UserProfile.Funcionario;
+
+  cliente.lojaId = loja._id;
+
+  await cliente.save();
+
+
+  // ------------------------------------------------------
+  // 8. Retornar funcionário
+  // ------------------------------------------------------
+
+  return cliente;
+}
+
+
+
