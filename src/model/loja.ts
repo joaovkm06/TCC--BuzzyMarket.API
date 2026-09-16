@@ -1,4 +1,15 @@
-import { model, Schema, Types } from 'mongoose';
+
+import {
+  model,
+  Schema,
+  Types,
+  Document
+} from 'mongoose';
+
+
+// ======================================================
+// STATUS DA LOJA
+// ======================================================
 
 export type StatusLoja =
   | 'pendente'
@@ -12,13 +23,21 @@ export type StatusLoja =
 // ======================================================
 
 export interface EnderecoLoja {
+
   cep: string;
+
   logradouro: string;
+
   numero: string;
+
   complemento?: string;
+
   bairro: string;
+
   cidade: string;
+
   estado: string;
+
 }
 
 
@@ -27,18 +46,30 @@ export interface EnderecoLoja {
 // ======================================================
 
 export interface HorarioFuncionamento {
+
   abertura: string;
+
   fechamento: string;
+
 }
 
+
 export interface HorariosLoja {
+
   segunda?: HorarioFuncionamento;
+
   terca?: HorarioFuncionamento;
+
   quarta?: HorarioFuncionamento;
+
   quinta?: HorarioFuncionamento;
+
   sexta?: HorarioFuncionamento;
+
   sabado?: HorarioFuncionamento;
+
   domingo?: HorarioFuncionamento;
+
 }
 
 
@@ -46,11 +77,12 @@ export interface HorariosLoja {
 // LOJA
 // ======================================================
 
-export interface Loja {
-  id: string;
+export interface Loja extends Document {
 
   nome: string;
+
   descricao?: string;
+
   categoria: string;
 
   // Foto de perfil/logo da loja
@@ -59,85 +91,95 @@ export interface Loja {
   // Banner da loja
   banner?: string;
 
-  // Telefone de contato da loja
+  // Telefone de contato
   telefone: string;
 
-  // Endereço físico da loja
+  // Endereço físico
   endereco: EnderecoLoja;
 
-  // ID do usuário que é dono da loja
+  // Usuário proprietário da loja
   proprietarioId: Types.ObjectId;
 
+  // Status da loja
   status: StatusLoja;
 
-  // Horários de funcionamento da loja
+  // Horários de funcionamento
   horarios: HorariosLoja;
 
   criadoEm: Date;
+
 }
 
 
 // ======================================================
-// ENDEREÇO DA LOJA
+// ENDEREÇO DA LOJA - SCHEMA
 // ======================================================
 
-const enderecoLojaSchema = new Schema<EnderecoLoja>(
-  {
-    cep: {
-      type: String,
-      required: true,
-      trim: true
+const enderecoLojaSchema =
+  new Schema<EnderecoLoja>(
+
+    {
+
+      cep: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      logradouro: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      numero: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      complemento: {
+        type: String,
+        required: false,
+        trim: true
+      },
+
+      bairro: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      cidade: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      estado: {
+        type: String,
+        required: true,
+        trim: true
+      }
+
     },
 
-    logradouro: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    numero: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    complemento: {
-      type: String,
-      required: false,
-      trim: true
-    },
-
-    bairro: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    cidade: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    estado: {
-      type: String,
-      required: true,
-      trim: true
+    {
+      _id: false
     }
-  },
-  {
-    _id: false
-  }
-);
+
+  );
 
 
 // ======================================================
-// HORÁRIO DE FUNCIONAMENTO
+// HORÁRIO DE FUNCIONAMENTO - SCHEMA
 // ======================================================
 
 const horarioFuncionamentoSchema =
   new Schema<HorarioFuncionamento>(
+
     {
+
       abertura: {
         type: String,
         required: true,
@@ -151,20 +193,25 @@ const horarioFuncionamentoSchema =
         trim: true,
         match: /^([01]\d|2[0-3]):([0-5]\d)$/
       }
+
     },
+
     {
       _id: false
     }
+
   );
 
 
 // ======================================================
-// HORÁRIOS DA SEMANA
+// HORÁRIOS DA SEMANA - SCHEMA
 // ======================================================
 
 const horariosLojaSchema =
   new Schema<HorariosLoja>(
+
     {
+
       segunda: {
         type: horarioFuncionamentoSchema,
         required: false
@@ -199,126 +246,162 @@ const horariosLojaSchema =
         type: horarioFuncionamentoSchema,
         required: false
       }
+
     },
+
     {
       _id: false
     }
+
   );
 
 
 // ======================================================
-// LOJA
+// LOJA - SCHEMA PRINCIPAL
 // ======================================================
 
-const lojaSchema = new Schema<Loja>(
-  {
-    nome: {
-      type: String,
-      required: true,
-      trim: true
+const lojaSchema =
+  new Schema<Loja>(
+
+    {
+
+      nome: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      descricao: {
+        type: String,
+        required: false,
+        trim: true
+      },
+
+      categoria: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+
+      // ==================================================
+      // FOTO
+      // ==================================================
+
+      foto: {
+        type: String,
+        required: false,
+        trim: true
+      },
+
+
+      // ==================================================
+      // BANNER
+      // ==================================================
+
+      banner: {
+        type: String,
+        required: false,
+        trim: true
+      },
+
+
+      // ==================================================
+      // TELEFONE
+      // ==================================================
+
+      telefone: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+
+      // ==================================================
+      // ENDEREÇO
+      // ==================================================
+
+      endereco: {
+        type: enderecoLojaSchema,
+        required: true
+      },
+
+
+      // ==================================================
+      // PROPRIETÁRIO
+      // ==================================================
+
+      proprietarioId: {
+
+        type: Schema.Types.ObjectId,
+
+        ref: 'User',
+
+        required: true
+
+      },
+
+
+      // ==================================================
+      // STATUS
+      // ==================================================
+
+      status: {
+
+        type: String,
+
+        enum: [
+          'pendente',
+          'aprovada',
+          'rejeitada',
+          'bloqueada'
+        ],
+
+        default: 'pendente',
+
+        required: true
+
+      },
+
+
+      // ==================================================
+      // HORÁRIOS
+      // ==================================================
+
+      horarios: {
+
+        type: horariosLojaSchema,
+
+        required: true,
+
+        default: {}
+
+      }
+
     },
 
-    descricao: {
-      type: String,
-      trim: true
-    },
+    {
 
-    categoria: {
-      type: String,
-      required: true,
-      trim: true
-    },
+      timestamps: {
 
-    // ==================================================
-    // FOTO DA LOJA
-    // ==================================================
+        createdAt: 'criadoEm',
 
-    foto: {
-      type: String,
-      required: false,
-      trim: true
-    },
+        updatedAt: false
 
-    // ==================================================
-    // BANNER DA LOJA
-    // ==================================================
+      }
 
-    banner: {
-      type: String,
-      required: false,
-      trim: true
-    },
-
-    // ==================================================
-    // TELEFONE
-    // ==================================================
-
-    telefone: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    // ==================================================
-    // ENDEREÇO
-    // ==================================================
-
-    endereco: {
-      type: enderecoLojaSchema,
-      required: true
-    },
-
-    // ==================================================
-    // PROPRIETÁRIO
-    // ==================================================
-
-    proprietarioId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-
-    // ==================================================
-    // STATUS
-    // ==================================================
-
-    status: {
-      type: String,
-      enum: [
-        'pendente',
-        'aprovada',
-        'rejeitada',
-        'bloqueada'
-      ],
-      default: 'pendente',
-      required: true
-    },
-
-    // ==================================================
-    // HORÁRIOS
-    // ==================================================
-
-    horarios: {
-      type: horariosLojaSchema,
-      required: true,
-      default: {}
     }
-  },
 
-  {
-    timestamps: {
-      createdAt: 'criadoEm',
-      updatedAt: false
-    }
-  }
-);
+  );
 
 
 // ======================================================
 // MODEL
 // ======================================================
 
-export const LojaModel = model<Loja>(
-  'Loja',
-  lojaSchema
-);
+export const LojaModel =
+  model<Loja>(
+    'Loja',
+    lojaSchema
+  );
+

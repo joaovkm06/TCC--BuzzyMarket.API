@@ -1,3 +1,4 @@
+
 import { Router } from 'express';
 
 import {
@@ -10,58 +11,141 @@ import {
   excluirNotificacao
 } from '../controller/NotificaçaoController';
 
+import { autenticar } from '../middleware/AuthMiddleware';
+
+import { permitirPerfis } from '../middleware/RoleMiddleware';
+
+import { UserProfile } from '../model/usuario';
+
+
 const router = Router();
 
 
+// =====================================================
+// CRIAR NOTIFICAÇÃO
+// =====================================================
 
+// Admin, lojista e funcionário podem enviar
+// notificações para usuários.
 
-// Criar notificação
 router.post(
   '/',
+  autenticar,
+  permitirPerfis(
+    UserProfile.ADMIN,
+    UserProfile.Logista,
+    UserProfile.Funcionario
+  ),
   criarNotificacao
 );
 
 
-// Listar todas
+// =====================================================
+// LISTAR TODAS
+// =====================================================
+
+// Apenas administrador pode visualizar
+// todas as notificações da plataforma.
+
 router.get(
   '/',
+  autenticar,
+  permitirPerfis(
+    UserProfile.ADMIN
+  ),
   listarNotificacoes
 );
 
 
-// Listar notificações de um usuário
+// =====================================================
+// LISTAR MINHAS NOTIFICAÇÕES
+// =====================================================
+
+// O usuário é identificado pelo JWT.
+// Não usamos /usuario/:usuarioId.
+
 router.get(
-  '/usuario/:usuarioId',
+  '/usuario',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Funcionario,
+    UserProfile.Logista,
+    UserProfile.ADMIN
+  ),
   listarNotificacoesPorUsuario
 );
 
 
-// Marcar todas como lidas
+// =====================================================
+// MARCAR TODAS COMO LIDAS
+// =====================================================
+
+// O usuário é identificado pelo JWT.
+
 router.patch(
-  '/usuario/:usuarioId/lidas',
+  '/usuario/lidas',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Funcionario,
+    UserProfile.Logista,
+    UserProfile.ADMIN
+  ),
   marcarTodasComoLidas
 );
 
 
-// Buscar por ID
+// =====================================================
+// BUSCAR POR ID
+// =====================================================
+
 router.get(
   '/:id',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Funcionario,
+    UserProfile.Logista,
+    UserProfile.ADMIN
+  ),
   buscarNotificacaoPorId
 );
 
 
-// Marcar como lida/não lida
+// =====================================================
+// MARCAR COMO LIDA / NÃO LIDA
+// =====================================================
+
 router.patch(
   '/:id/lida',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Funcionario,
+    UserProfile.Logista,
+    UserProfile.ADMIN
+  ),
   atualizarLeitura
 );
 
 
-// Excluir
+// =====================================================
+// EXCLUIR
+// =====================================================
+
 router.delete(
   '/:id',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Funcionario,
+    UserProfile.Logista,
+    UserProfile.ADMIN
+  ),
   excluirNotificacao
 );
 
 
 export default router;
+

@@ -1,3 +1,4 @@
+
 import { Router } from 'express';
 
 import {
@@ -9,50 +10,110 @@ import {
   cancelarPagamento
 } from '../controller/PagamentoController';
 
+import { autenticar } from '../middleware/AuthMiddleware';
+
+import { permitirPerfis } from '../middleware/RoleMiddleware';
+
+import { UserProfile } from '../model/usuario';
+
+
 const router = Router();
 
 
+// =====================================================
+// CRIAR PAGAMENTO
+// =====================================================
 
-// Criar pagamento
 router.post(
   '/',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente
+  ),
   criarPagamento
 );
 
 
-// Listar todos
+// =====================================================
+// LISTAR TODOS
+// =====================================================
+
 router.get(
   '/',
+  autenticar,
+  permitirPerfis(
+    UserProfile.ADMIN
+  ),
   listarPagamentos
 );
 
 
-// Buscar pagamento de um pedido
+// =====================================================
+// BUSCAR PAGAMENTO DE UM PEDIDO
+// =====================================================
+
 router.get(
   '/pedido/:pedidoId',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Logista,
+    UserProfile.Funcionario,
+    UserProfile.ADMIN
+  ),
   buscarPagamentoPorPedido
 );
 
 
-// Buscar pagamento por ID
+// =====================================================
+// BUSCAR PAGAMENTO POR ID
+// =====================================================
+
 router.get(
   '/:id',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Logista,
+    UserProfile.Funcionario,
+    UserProfile.ADMIN
+  ),
   buscarPagamentoPorId
 );
 
 
-// Atualizar status
+// =====================================================
+// ATUALIZAR STATUS
+// =====================================================
+
 router.patch(
   '/:id/status',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Logista,
+    UserProfile.Funcionario,
+    UserProfile.ADMIN
+  ),
   atualizarStatusPagamento
 );
 
 
-// Cancelar pagamento
+// =====================================================
+// CANCELAR PAGAMENTO
+// =====================================================
+
 router.delete(
   '/:id',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Cliente,
+    UserProfile.Logista,
+    UserProfile.Funcionario,
+    UserProfile.ADMIN
+  ),
   cancelarPagamento
 );
 
 
 export default router;
+

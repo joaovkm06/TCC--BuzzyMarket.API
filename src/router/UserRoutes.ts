@@ -10,20 +10,20 @@ import {
   listarUsuarios,
   buscarUsuario,
   atualizarUsuario,
-  excluirUsuario
+  excluirUsuario,
+  listarFuncionariosDaLoja
 } from '../controller/UsuarioController';
 
 import { autenticar } from '../middleware/AuthMiddleware';
 import { permitirPerfis } from '../middleware/RoleMiddleware';
+import { permitirProprioOuAdmin } from '../middleware/OwnerOrAdmin';
 import { UserProfile } from '../model/usuario';
 
 const router = Router();
 
-
 // ======================================================
 // POST /users
-// CADASTRO PÚBLICO
-// Sempre cria CLIENTE
+// CADASTRO PÚBLICO DE CLIENTE
 // ======================================================
 
 router.post(
@@ -33,9 +33,25 @@ router.post(
 
 
 // ======================================================
+// POST /funcionarios
+// LISTAR FUNCIONÁRIOS DA PRÓPRIA LOJA
+// LOJISTA OU ADMIN
+
+
+router.get(
+  '/funcionarios',
+  autenticar,
+  permitirPerfis(
+    UserProfile.Logista,
+    UserProfile.ADMIN
+  ),
+  listarFuncionariosDaLoja
+);
+
+
+// ======================================================
 // POST /users/lojista
-// CADASTRO PÚBLICO
-// Sempre cria LOJISTA
+// CADASTRO PÚBLICO DE LOJISTA
 // ======================================================
 
 router.post(
@@ -47,16 +63,13 @@ router.post(
 // ======================================================
 // POST /users/funcionario
 // CRIAÇÃO DIRETA DE FUNCIONÁRIO
-// Apenas LOJISTA ou ADMIN
+// SOMENTE ADMIN
 // ======================================================
 
 router.post(
   '/funcionario',
   autenticar,
-  permitirPerfis(
-    UserProfile.Logista,
-    UserProfile.ADMIN
-  ),
+  permitirPerfis(UserProfile.ADMIN),
   criarFuncionario
 );
 
@@ -64,25 +77,20 @@ router.post(
 // ======================================================
 // POST /users/admin
 // CRIAR ADMIN
-// Apenas ADMIN
+// SOMENTE ADMIN
 // ======================================================
 
 router.post(
   '/admin',
   autenticar,
-  permitirPerfis(
-    UserProfile.ADMIN
-  ),
+  permitirPerfis(UserProfile.ADMIN),
   criarAdmin
 );
 
 
 // ======================================================
 // PATCH /users/:id/funcionario
-// CONTRATAR CLIENTE
-//
-// LOJISTA → funcionário da própria loja
-// ADMIN   → funcionário da loja informada
+// LOJISTA OU ADMIN CONTRATA CLIENTE
 // ======================================================
 
 router.patch(
@@ -98,61 +106,55 @@ router.patch(
 
 // ======================================================
 // GET /users
-// LISTAR USUÁRIOS
-// Apenas ADMIN
+// LISTAR TODOS OS USUÁRIOS
+// SOMENTE ADMIN
 // ======================================================
 
 router.get(
   '/',
   autenticar,
-  permitirPerfis(
-    UserProfile.ADMIN
-  ),
+  permitirPerfis(UserProfile.ADMIN),
   listarUsuarios
 );
 
 
 // ======================================================
 // GET /users/:id
-// BUSCAR USUÁRIO
-// Usuário autenticado
+// PRÓPRIO USUÁRIO OU ADMIN
 // ======================================================
 
 router.get(
   '/:id',
   autenticar,
+  permitirProprioOuAdmin,
   buscarUsuario
 );
 
 
 // ======================================================
 // PUT /users/:id
-// ATUALIZAR USUÁRIO
-// Usuário autenticado
+// PRÓPRIO USUÁRIO OU ADMIN
 // ======================================================
 
 router.put(
   '/:id',
   autenticar,
+  permitirProprioOuAdmin,
   atualizarUsuario
 );
 
 
 // ======================================================
 // DELETE /users/:id
-// EXCLUIR USUÁRIO
-// Apenas ADMIN
+// SOMENTE ADMIN
 // ======================================================
 
 router.delete(
   '/:id',
   autenticar,
-  permitirPerfis(
-    UserProfile.ADMIN
-  ),
+  permitirPerfis(UserProfile.ADMIN),
   excluirUsuario
 );
-
 
 export default router;
 

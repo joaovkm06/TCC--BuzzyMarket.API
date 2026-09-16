@@ -1,18 +1,9 @@
 
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-interface TokenPayload {
-  id: string;
-  perfil: string;
-  lojaId?: string;
-  iat?: number;
-  exp?: number;
-}
-
-export interface AuthRequest extends Request {
-  usuario?: TokenPayload;
-}
+import { AuthRequest } from '../types/AuthRequest';
+import { TokenPayload } from '../types/TokenPayLoad';
 
 export function autenticar(
   req: AuthRequest,
@@ -20,7 +11,6 @@ export function autenticar(
   next: NextFunction
 ) {
   try {
-    // Pega o Authorization enviado pelo cliente
     const authorization = req.headers.authorization;
 
     if (!authorization) {
@@ -29,10 +19,12 @@ export function autenticar(
       });
     }
 
-    // Esperamos: Bearer TOKEN
     const partes = authorization.split(' ');
 
-    if (partes.length !== 2 || partes[0] !== 'Bearer') {
+    if (
+      partes.length !== 2 ||
+      partes[0] !== 'Bearer'
+    ) {
       return res.status(401).json({
         mensagem: 'Formato do token invalido.'
       });
@@ -48,16 +40,13 @@ export function autenticar(
       });
     }
 
-    // Verifica se o token é válido
     const payload = jwt.verify(
       token,
       jwtSecret
     ) as TokenPayload;
 
-    // Guarda os dados do usuário na requisição
     req.usuario = payload;
 
-    // Libera a requisição
     next();
 
   } catch (error) {
@@ -67,3 +56,5 @@ export function autenticar(
   }
 }
 
+
+export { AuthRequest };

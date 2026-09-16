@@ -1,8 +1,43 @@
+
+import { Types } from 'mongoose';
+
 import * as notificacaoRepository
   from '../repository/NotificaçaoRepository';
 
 import * as userRepository
   from '../repository/UserRepository';
+
+
+// =====================================================
+// ERRO PADRÃO
+// =====================================================
+
+function erro(
+  mensagem: string,
+  status = 400
+) {
+
+  const error: any = new Error(
+    mensagem
+  );
+
+  error.status = status;
+
+  return error;
+}
+
+
+// =====================================================
+// TIPOS PERMITIDOS
+// =====================================================
+
+const tiposPermitidos = [
+  'loja',
+  'pedido',
+  'pagamento',
+  'sistema',
+  'personalizada'
+];
 
 
 // =====================================================
@@ -23,7 +58,7 @@ export async function criarNotificacao(
 
 
   // ===================================================
-  // VALIDAÇÃO
+  // VALIDAÇÕES
   // ===================================================
 
   if (
@@ -33,44 +68,65 @@ export async function criarNotificacao(
     !tipo
   ) {
 
-    const erro: any = new Error(
+    throw erro(
       'usuarioId, titulo, mensagem e tipo são obrigatórios.'
     );
 
-    erro.status = 400;
+  }
 
-    throw erro;
+
+  if (
+    !Types.ObjectId.isValid(
+      usuarioId.toString()
+    )
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
+
+  if (remetenteId) {
+
+    if (
+      !Types.ObjectId.isValid(
+        remetenteId.toString()
+      )
+    ) {
+
+      throw erro(
+        'remetenteId inválido.'
+      );
+
+    }
+
   }
 
 
   // ===================================================
-  // TIPOS PERMITIDOS
+  // VALIDA TIPO
   // ===================================================
 
-  const tiposPermitidos = [
-    'loja',
-    'pedido',
-    'pagamento',
-    'sistema',
-    'personalizada'
-  ];
+  if (
+    !tiposPermitidos.includes(tipo)
+  ) {
 
-
-  if (!tiposPermitidos.includes(tipo)) {
-
-    const erro: any = new Error(
+    const error: any = erro(
       'Tipo de notificação inválido.'
     );
 
-    erro.status = 400;
-    erro.tiposPermitidos = tiposPermitidos;
+    error.tiposPermitidos =
+      tiposPermitidos;
 
-    throw erro;
+    throw error;
+
   }
 
 
   // ===================================================
-  // VERIFICA USUÁRIO DESTINATÁRIO
+  // VERIFICA DESTINATÁRIO
   // ===================================================
 
   const usuario =
@@ -81,13 +137,11 @@ export async function criarNotificacao(
 
   if (!usuario) {
 
-    const erro: any = new Error(
-      'Usuário que receberá a notificação não encontrado.'
+    throw erro(
+      'Usuário que receberá a notificação não encontrado.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -105,27 +159,34 @@ export async function criarNotificacao(
 
     if (!remetente) {
 
-      const erro: any = new Error(
-        'Usuário remetente não encontrado.'
+      throw erro(
+        'Usuário remetente não encontrado.',
+        404
       );
 
-      erro.status = 404;
-
-      throw erro;
     }
+
   }
 
 
   // ===================================================
-  // CRIA
+  // CRIA NOTIFICAÇÃO
   // ===================================================
 
   const notificacao =
     await notificacaoRepository.criarNotificacao({
 
-      remetenteId,
+      remetenteId:
+        remetenteId
+          ? new Types.ObjectId(
+              remetenteId.toString()
+            )
+          : undefined,
 
-      usuarioId,
+      usuarioId:
+        new Types.ObjectId(
+          usuarioId.toString()
+        ),
 
       titulo,
 
@@ -140,12 +201,13 @@ export async function criarNotificacao(
 
   // ===================================================
   // RETORNA POPULADA
-  // ===================================================
+  // =====================================================
 
   return await notificacaoRepository
     .buscarNotificacaoPorId(
       notificacao._id.toString()
     );
+
 }
 
 
@@ -157,6 +219,7 @@ export async function listarNotificacoes() {
 
   return await notificacaoRepository
     .listarNotificacoes();
+
 }
 
 
@@ -168,6 +231,17 @@ export async function buscarNotificacaoPorId(
   id: string
 ) {
 
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
+
+    throw erro(
+      'ID da notificação inválido.'
+    );
+
+  }
+
+
   const notificacao =
     await notificacaoRepository
       .buscarNotificacaoPorId(id);
@@ -175,17 +249,16 @@ export async function buscarNotificacaoPorId(
 
   if (!notificacao) {
 
-    const erro: any = new Error(
-      'Notificação não encontrada.'
+    throw erro(
+      'Notificação não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
   return notificacao;
+
 }
 
 
@@ -197,7 +270,20 @@ export async function listarNotificacoesPorUsuario(
   usuarioId: string
 ) {
 
-  // Verifica usuário
+  if (
+    !Types.ObjectId.isValid(usuarioId)
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
+
+  // ===================================================
+  // VERIFICA USUÁRIO
+  // ===================================================
 
   const usuario =
     await userRepository.buscarUsuarioSemPopulate(
@@ -207,15 +293,17 @@ export async function listarNotificacoesPorUsuario(
 
   if (!usuario) {
 
-    const erro: any = new Error(
-      'Usuário não encontrado.'
+    throw erro(
+      'Usuário não encontrado.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
+
+  // ===================================================
+  // BUSCA NOTIFICAÇÕES
+  // ===================================================
 
   const notificacoes =
     await notificacaoRepository
@@ -234,7 +322,8 @@ export async function listarNotificacoesPorUsuario(
 
   const naoLidas =
     notificacoes.filter(
-        (      notificacao: { lida: any; }) => !notificacao.lida
+      (notificacao: any) =>
+        !notificacao.lida
     ).length;
 
 
@@ -257,6 +346,7 @@ export async function listarNotificacoesPorUsuario(
     notificacoes
 
   };
+
 }
 
 
@@ -269,15 +359,25 @@ export async function atualizarLeitura(
   lida: boolean
 ) {
 
-  if (typeof lida !== 'boolean') {
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
 
-    const erro: any = new Error(
+    throw erro(
+      'ID da notificação inválido.'
+    );
+
+  }
+
+
+  if (
+    typeof lida !== 'boolean'
+  ) {
+
+    throw erro(
       'O campo lida deve ser true ou false.'
     );
 
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -288,13 +388,11 @@ export async function atualizarLeitura(
 
   if (!notificacao) {
 
-    const erro: any = new Error(
-      'Notificação não encontrada.'
+    throw erro(
+      'Notificação não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -305,6 +403,7 @@ export async function atualizarLeitura(
 
   return await notificacaoRepository
     .buscarNotificacaoPorId(id);
+
 }
 
 
@@ -316,6 +415,21 @@ export async function marcarTodasComoLidas(
   usuarioId: string
 ) {
 
+  if (
+    !Types.ObjectId.isValid(usuarioId)
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
+
+  // ===================================================
+  // VERIFICA USUÁRIO
+  // ===================================================
+
   const usuario =
     await userRepository.buscarUsuarioSemPopulate(
       usuarioId
@@ -324,15 +438,17 @@ export async function marcarTodasComoLidas(
 
   if (!usuario) {
 
-    const erro: any = new Error(
-      'Usuário não encontrado.'
+    throw erro(
+      'Usuário não encontrado.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
+
+  // ===================================================
+  // MARCA TODAS
+  // ===================================================
 
   const resultado =
     await notificacaoRepository
@@ -347,6 +463,7 @@ export async function marcarTodasComoLidas(
       resultado.modifiedCount
 
   };
+
 }
 
 
@@ -358,6 +475,17 @@ export async function excluirNotificacao(
   id: string
 ) {
 
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
+
+    throw erro(
+      'ID da notificação inválido.'
+    );
+
+  }
+
+
   const notificacao =
     await notificacaoRepository
       .buscarNotificacaoSemPopulate(id);
@@ -365,13 +493,11 @@ export async function excluirNotificacao(
 
   if (!notificacao) {
 
-    const erro: any = new Error(
-      'Notificação não encontrada.'
+    throw erro(
+      'Notificação não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -380,4 +506,6 @@ export async function excluirNotificacao(
 
 
   return true;
+
 }
+

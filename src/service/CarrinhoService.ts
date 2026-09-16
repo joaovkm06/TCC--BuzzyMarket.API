@@ -1,24 +1,80 @@
-import * as carrinhoRepository from '../repository/CarrinhoRepository';
-import * as userRepository from '../repository/UserRepository';
-import * as produtoRepository from '../repository/ProdutoRepository';
 
-function erro(mensagem: string, status = 400) {
-  const error: any = new Error(mensagem);
+import { Types } from 'mongoose';
+
+import * as carrinhoRepository
+  from '../repository/CarrinhoRepository';
+
+import * as userRepository
+  from '../repository/UserRepository';
+
+import * as produtoRepository
+  from '../repository/ProdutoRepository';
+
+import { UserProfile } from '../model/usuario';
+
+
+// =====================================================
+// ERRO PADRONIZADO
+// =====================================================
+
+function erro(
+  mensagem: string,
+  status = 400
+) {
+
+  const error: any =
+    new Error(mensagem);
+
   error.status = status;
+
   return error;
 }
+
+
+// =====================================================
+// ADICIONAR ITEM
+// =====================================================
 
 export async function adicionarItem(
   usuarioId: string,
   produtoId: string,
   quantidade: number
 ) {
+
+  // ---------------------------------------------------
+  // VALIDAÇÕES
+  // ---------------------------------------------------
+
   if (!usuarioId) {
-    throw erro('usuarioId é obrigatório.');
+    throw erro(
+      'usuarioId é obrigatório.'
+    );
   }
 
   if (!produtoId) {
-    throw erro('produtoId é obrigatório.');
+    throw erro(
+      'produtoId é obrigatório.'
+    );
+  }
+
+  if (
+    !Types.ObjectId.isValid(usuarioId)
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
+  if (
+    !Types.ObjectId.isValid(produtoId)
+  ) {
+
+    throw erro(
+      'produtoId inválido.'
+    );
+
   }
 
   if (
@@ -27,155 +83,422 @@ export async function adicionarItem(
     !Number.isInteger(quantidade) ||
     quantidade < 1
   ) {
-    throw erro('A quantidade deve ser um número inteiro maior que zero.');
+
+    throw erro(
+      'A quantidade deve ser um número inteiro maior que zero.'
+    );
+
   }
 
-  // Verifica usuário
-  const usuario = await userRepository.buscarUsuarioSemPopulate(usuarioId);
+
+  // ---------------------------------------------------
+  // VERIFICAR USUÁRIO
+  // ---------------------------------------------------
+
+  const usuario =
+    await userRepository
+      .buscarUsuarioSemPopulate(
+        usuarioId
+      );
 
   if (!usuario) {
-    throw erro('Usuário não encontrado.', 404);
+
+    throw erro(
+      'Usuário não encontrado.',
+      404
+    );
+
   }
 
-  // Apenas cliente pode possuir carrinho de compras
-  if (usuario.perfil !== 'cliente') {
-    throw erro('Apenas clientes podem utilizar o carrinho.');
+
+  if (
+    usuario.perfil !==
+    UserProfile.Cliente
+  ) {
+
+    throw erro(
+      'Apenas clientes podem utilizar o carrinho.'
+    );
+
   }
 
-  // Verifica produto
-  const produto = await produtoRepository.buscarProdutoSemPopulate(produtoId);
+
+  // ---------------------------------------------------
+  // VERIFICAR PRODUTO
+  // ---------------------------------------------------
+
+  const produto =
+    await produtoRepository
+      .buscarProdutoSemPopulate(
+        produtoId
+      );
 
   if (!produto) {
-    throw erro('Produto não encontrado.', 404);
+
+    throw erro(
+      'Produto não encontrado.',
+      404
+    );
+
   }
+
 
   if (!produto.ativo) {
-    throw erro('Este produto está inativo.');
+
+    throw erro(
+      'Este produto está inativo.'
+    );
+
   }
 
-  if (produto.estoque < quantidade) {
+
+  if (
+    produto.estoque < quantidade
+  ) {
+
     throw erro(
       `Estoque insuficiente. Estoque disponível: ${produto.estoque}.`
     );
+
   }
 
-  // Verifica se já existe carrinho
+
+  // ---------------------------------------------------
+  // BUSCAR CARRINHO
+  // ---------------------------------------------------
+
   let carrinho =
-    await carrinhoRepository.buscarCarrinhoSemPopulate(usuarioId);
+    await carrinhoRepository
+      .buscarCarrinhoSemPopulate(
+        usuarioId
+      );
 
-  // Se não existe, cria
+
+  // ---------------------------------------------------
+  // CRIAR CARRINHO
+  // ---------------------------------------------------
+
   if (!carrinho) {
-    carrinho = await carrinhoRepository.criarCarrinho({
-      usuarioId,
-      itens: [
-        {
-          produtoId: produto._id,
-          nome: produto.nome,
-          preco: produto.preco,
-          imagem: produto.imagem,
-          quantidade
-        }
-      ]
-    });
 
-    return await carrinhoRepository.buscarCarrinhoPorUsuario(usuarioId);
+    carrinho =
+      await carrinhoRepository
+        .criarCarrinho({
+
+          usuarioId:
+            new Types.ObjectId(
+              usuarioId
+            ),
+
+          itens: [
+
+            {
+
+              produtoId:
+                produto._id,
+
+              nome:
+                produto.nome,
+
+              preco:
+                produto.preco,
+
+              imagem:
+                produto.imagem,
+
+              quantidade
+
+            }
+
+          ]
+
+        });
+
+
+    return await carrinhoRepository
+      .buscarCarrinhoPorUsuario(
+        usuarioId
+      );
+
   }
 
-  // Verifica se o produto já está no carrinho
-  const itemExistente = carrinho.itens.find(
-    (item: any) =>
-      item.produtoId.toString() === produtoId
-  );
+
+  // ---------------------------------------------------
+  // VERIFICAR SE JÁ EXISTE
+  // ---------------------------------------------------
+
+  const itemExistente =
+    carrinho.itens.find(
+
+      (item: any) =>
+        String(item.produtoId) ===
+        String(produtoId)
+
+    );
+
+
+  // ---------------------------------------------------
+  // PRODUTO JÁ EXISTE
+  // ---------------------------------------------------
 
   if (itemExistente) {
-    const novaQuantidade =
-      itemExistente.quantidade + quantidade;
 
-    if (novaQuantidade > produto.estoque) {
+    const novaQuantidade =
+      itemExistente.quantidade +
+      quantidade;
+
+
+    if (
+      novaQuantidade >
+      produto.estoque
+    ) {
+
       throw erro(
         `Quantidade solicitada ultrapassa o estoque. Estoque disponível: ${produto.estoque}.`
       );
+
     }
 
-    return await carrinhoRepository.atualizarItem(
-      usuarioId,
-      produtoId,
-      novaQuantidade
-    );
+
+    return await carrinhoRepository
+      .atualizarItem(
+
+        usuarioId,
+
+        produtoId,
+
+        novaQuantidade
+
+      );
+
   }
 
-  // Adiciona novo produto
-  return await carrinhoRepository.adicionarItem(
-    usuarioId,
-    {
-      produtoId: produto._id,
-      nome: produto.nome,
-      preco: produto.preco,
-      imagem: produto.imagem,
-      quantidade
-    }
-  );
+
+  // ---------------------------------------------------
+  // NOVO PRODUTO
+  // ---------------------------------------------------
+
+  return await carrinhoRepository
+    .adicionarItem(
+
+      usuarioId,
+
+      {
+
+        produtoId:
+          produto._id,
+
+        nome:
+          produto.nome,
+
+        preco:
+          produto.preco,
+
+        imagem:
+          produto.imagem,
+
+        quantidade
+
+      }
+
+    );
+
 }
 
-export async function buscarCarrinho(usuarioId: string) {
+
+// =====================================================
+// BUSCAR CARRINHO
+// =====================================================
+
+export async function buscarCarrinho(
+  usuarioId: string
+) {
+
   if (!usuarioId) {
-    throw erro('usuarioId é obrigatório.');
+
+    throw erro(
+      'usuarioId é obrigatório.'
+    );
+
   }
+
+
+  if (
+    !Types.ObjectId.isValid(usuarioId)
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
 
   const usuario =
-    await userRepository.buscarUsuarioSemPopulate(usuarioId);
+    await userRepository
+      .buscarUsuarioSemPopulate(
+        usuarioId
+      );
+
 
   if (!usuario) {
-    throw erro('Usuário não encontrado.', 404);
+
+    throw erro(
+      'Usuário não encontrado.',
+      404
+    );
+
   }
 
-  if (usuario.perfil !== 'cliente') {
-    throw erro('Apenas clientes possuem carrinho.');
+
+  if (
+    usuario.perfil !==
+    UserProfile.Cliente
+  ) {
+
+    throw erro(
+      'Apenas clientes possuem carrinho.'
+    );
+
   }
+
 
   const carrinho =
-    await carrinhoRepository.buscarCarrinhoPorUsuario(usuarioId);
+    await carrinhoRepository
+      .buscarCarrinhoPorUsuario(
+        usuarioId
+      );
+
+
+  // ---------------------------------------------------
+  // CARRINHO VAZIO / INEXISTENTE
+  // ---------------------------------------------------
 
   if (!carrinho) {
+
     return {
+
       usuarioId,
+
       itens: [],
+
       quantidadeItens: 0,
+
       valorTotal: 0
+
     };
+
   }
 
-  const quantidadeItens = carrinho.itens.reduce(
-    (total: number, item: any) =>
-      total + item.quantidade,
-    0
-  );
 
-  const valorTotal = carrinho.itens.reduce(
-    (total: number, item: any) =>
-      total + item.preco * item.quantidade,
-    0
-  );
+  // ---------------------------------------------------
+  // QUANTIDADE TOTAL
+  // ---------------------------------------------------
+
+  const quantidadeItens =
+    carrinho.itens.reduce(
+
+      (
+        total: number,
+        item: any
+      ) => {
+
+        return total +
+          item.quantidade;
+
+      },
+
+      0
+
+    );
+
+
+  // ---------------------------------------------------
+  // VALOR TOTAL
+  // ---------------------------------------------------
+
+  const valorTotal =
+    carrinho.itens.reduce(
+
+      (
+        total: number,
+        item: any
+      ) => {
+
+        return total +
+          item.preco *
+          item.quantidade;
+
+      },
+
+      0
+
+    );
+
 
   return {
+
     ...carrinho.toObject(),
+
     quantidadeItens,
-    valorTotal: Number(valorTotal.toFixed(2))
+
+    valorTotal:
+      Number(
+        valorTotal.toFixed(2)
+      )
+
   };
+
 }
+
+
+// =====================================================
+// ATUALIZAR QUANTIDADE
+// =====================================================
 
 export async function atualizarQuantidade(
   usuarioId: string,
   produtoId: string,
   quantidade: number
 ) {
+
   if (!usuarioId) {
-    throw erro('usuarioId é obrigatório.');
+
+    throw erro(
+      'usuarioId é obrigatório.'
+    );
+
   }
 
   if (!produtoId) {
-    throw erro('produtoId é obrigatório.');
+
+    throw erro(
+      'produtoId é obrigatório.'
+    );
+
   }
+
+
+  if (
+    !Types.ObjectId.isValid(usuarioId)
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
+
+  if (
+    !Types.ObjectId.isValid(produtoId)
+  ) {
+
+    throw erro(
+      'produtoId inválido.'
+    );
+
+  }
+
 
   if (
     quantidade === undefined ||
@@ -183,94 +506,265 @@ export async function atualizarQuantidade(
     !Number.isInteger(quantidade) ||
     quantidade < 1
   ) {
-    throw erro('A quantidade deve ser um número inteiro maior que zero.');
+
+    throw erro(
+      'A quantidade deve ser um número inteiro maior que zero.'
+    );
+
   }
+
+
+  // ---------------------------------------------------
+  // BUSCAR CARRINHO
+  // ---------------------------------------------------
 
   const carrinho =
-    await carrinhoRepository.buscarCarrinhoSemPopulate(usuarioId);
+    await carrinhoRepository
+      .buscarCarrinhoSemPopulate(
+        usuarioId
+      );
+
 
   if (!carrinho) {
-    throw erro('Carrinho não encontrado.', 404);
+
+    throw erro(
+      'Carrinho não encontrado.',
+      404
+    );
+
   }
 
-  const itemExiste = carrinho.itens.some(
-    (item: any) =>
-      item.produtoId.toString() === produtoId
-  );
+
+  // ---------------------------------------------------
+  // VERIFICAR ITEM
+  // ---------------------------------------------------
+
+  const itemExiste =
+    carrinho.itens.some(
+
+      (item: any) =>
+        String(item.produtoId) ===
+        String(produtoId)
+
+    );
+
 
   if (!itemExiste) {
-    throw erro('Produto não encontrado no carrinho.', 404);
+
+    throw erro(
+      'Produto não encontrado no carrinho.',
+      404
+    );
+
   }
+
+
+  // ---------------------------------------------------
+  // VERIFICAR PRODUTO ATUAL
+  // ---------------------------------------------------
 
   const produto =
-    await produtoRepository.buscarProdutoSemPopulate(produtoId);
+    await produtoRepository
+      .buscarProdutoSemPopulate(
+        produtoId
+      );
+
 
   if (!produto) {
-    throw erro('Produto não encontrado.', 404);
+
+    throw erro(
+      'Produto não encontrado.',
+      404
+    );
+
   }
+
 
   if (!produto.ativo) {
-    throw erro('Este produto está inativo.');
+
+    throw erro(
+      'Este produto está inativo.'
+    );
+
   }
 
-  if (quantidade > produto.estoque) {
+
+  if (
+    quantidade >
+    produto.estoque
+  ) {
+
     throw erro(
       `Estoque insuficiente. Estoque disponível: ${produto.estoque}.`
     );
+
   }
 
-  return await carrinhoRepository.atualizarItem(
-    usuarioId,
-    produtoId,
-    quantidade
-  );
+
+  // ---------------------------------------------------
+  // ATUALIZAR
+  // ---------------------------------------------------
+
+  return await carrinhoRepository
+    .atualizarItem(
+
+      usuarioId,
+
+      produtoId,
+
+      quantidade
+
+    );
+
 }
+
+
+// =====================================================
+// REMOVER ITEM
+// =====================================================
 
 export async function removerItem(
   usuarioId: string,
   produtoId: string
 ) {
+
   if (!usuarioId) {
-    throw erro('usuarioId é obrigatório.');
+
+    throw erro(
+      'usuarioId é obrigatório.'
+    );
+
   }
 
   if (!produtoId) {
-    throw erro('produtoId é obrigatório.');
+
+    throw erro(
+      'produtoId é obrigatório.'
+    );
+
   }
+
+
+  if (
+    !Types.ObjectId.isValid(usuarioId)
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
+
+  if (
+    !Types.ObjectId.isValid(produtoId)
+  ) {
+
+    throw erro(
+      'produtoId inválido.'
+    );
+
+  }
+
 
   const carrinho =
-    await carrinhoRepository.buscarCarrinhoSemPopulate(usuarioId);
+    await carrinhoRepository
+      .buscarCarrinhoSemPopulate(
+        usuarioId
+      );
+
 
   if (!carrinho) {
-    throw erro('Carrinho não encontrado.', 404);
+
+    throw erro(
+      'Carrinho não encontrado.',
+      404
+    );
+
   }
 
-  const itemExiste = carrinho.itens.some(
-    (item: any) =>
-      item.produtoId.toString() === produtoId
-  );
+
+  const itemExiste =
+    carrinho.itens.some(
+
+      (item: any) =>
+        String(item.produtoId) ===
+        String(produtoId)
+
+    );
+
 
   if (!itemExiste) {
-    throw erro('Produto não encontrado no carrinho.', 404);
+
+    throw erro(
+      'Produto não encontrado no carrinho.',
+      404
+    );
+
   }
 
-  return await carrinhoRepository.removerItem(
-    usuarioId,
-    produtoId
-  );
+
+  return await carrinhoRepository
+    .removerItem(
+
+      usuarioId,
+
+      produtoId
+
+    );
+
 }
 
-export async function limparCarrinho(usuarioId: string) {
+
+// =====================================================
+// LIMPAR CARRINHO
+// =====================================================
+
+export async function limparCarrinho(
+  usuarioId: string
+) {
+
   if (!usuarioId) {
-    throw erro('usuarioId é obrigatório.');
+
+    throw erro(
+      'usuarioId é obrigatório.'
+    );
+
   }
+
+
+  if (
+    !Types.ObjectId.isValid(usuarioId)
+  ) {
+
+    throw erro(
+      'usuarioId inválido.'
+    );
+
+  }
+
 
   const carrinho =
-    await carrinhoRepository.buscarCarrinhoSemPopulate(usuarioId);
+    await carrinhoRepository
+      .buscarCarrinhoSemPopulate(
+        usuarioId
+      );
+
 
   if (!carrinho) {
-    throw erro('Carrinho não encontrado.', 404);
+
+    throw erro(
+      'Carrinho não encontrado.',
+      404
+    );
+
   }
 
-  return await carrinhoRepository.limparCarrinho(usuarioId);
+
+  return await carrinhoRepository
+    .limparCarrinho(
+      usuarioId
+    );
+
 }
+

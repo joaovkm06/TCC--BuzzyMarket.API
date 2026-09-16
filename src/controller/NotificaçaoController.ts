@@ -1,10 +1,10 @@
-import {
-  Request,
-  Response
-} from 'express';
+
+import { Response } from 'express';
 
 import * as notificacaoService
   from '../service/NotificaçaoService';
+
+import { AuthRequest } from '../types/AuthRequest';
 
 
 // =====================================================
@@ -12,17 +12,21 @@ import * as notificacaoService
 // =====================================================
 
 export async function criarNotificacao(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
 
   try {
 
     const notificacao =
-      await notificacaoService
-        .criarNotificacao(
-          req.body
-        );
+      await notificacaoService.criarNotificacao({
+
+        ...req.body,
+
+        // Remetente vem do usuário autenticado
+        remetenteId: req.usuario!.id
+
+      });
 
 
     return res.status(201).json({
@@ -51,12 +55,16 @@ export async function criarNotificacao(
         'Erro interno ao criar notificação.',
 
       ...(error.tiposPermitidos && {
+
         tiposPermitidos:
           error.tiposPermitidos
+
       })
 
     });
+
   }
+
 }
 
 
@@ -65,7 +73,7 @@ export async function criarNotificacao(
 // =====================================================
 
 export async function listarNotificacoes(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
 
@@ -88,15 +96,18 @@ export async function listarNotificacoes(
     );
 
 
-    return res.status(500).json({
+    return res.status(
+      error.status || 500
+    ).json({
 
       mensagem:
-        'Erro interno ao buscar notificações.',
-
-      erro: error.message
+        error.message ||
+        'Erro interno ao buscar notificações.'
 
     });
+
   }
+
 }
 
 
@@ -105,7 +116,7 @@ export async function listarNotificacoes(
 // =====================================================
 
 export async function buscarNotificacaoPorId(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
 
@@ -139,25 +150,32 @@ export async function buscarNotificacaoPorId(
         'Não foi possível buscar a notificação.'
 
     });
+
   }
+
 }
 
 
 // =====================================================
-// LISTAR POR USUÁRIO
+// LISTAR MINHAS NOTIFICAÇÕES
 // =====================================================
 
 export async function listarNotificacoesPorUsuario(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
 
   try {
 
+    // O usuário vem do JWT
+    const usuarioId =
+      req.usuario!.id;
+
+
     const resultado =
       await notificacaoService
         .listarNotificacoesPorUsuario(
-          String(req.params.usuarioId)
+          usuarioId
         );
 
 
@@ -182,16 +200,18 @@ export async function listarNotificacoesPorUsuario(
         'Não foi possível buscar as notificações.'
 
     });
+
   }
+
 }
 
 
 // =====================================================
-// MARCAR COMO LIDA
+// MARCAR COMO LIDA / NÃO LIDA
 // =====================================================
 
 export async function atualizarLeitura(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
 
@@ -236,7 +256,9 @@ export async function atualizarLeitura(
         'Erro interno ao atualizar notificação.'
 
     });
+
   }
+
 }
 
 
@@ -245,16 +267,21 @@ export async function atualizarLeitura(
 // =====================================================
 
 export async function marcarTodasComoLidas(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
 
   try {
 
+    // O usuário vem do JWT
+    const usuarioId =
+      req.usuario!.id;
+
+
     const resultado =
       await notificacaoService
         .marcarTodasComoLidas(
-          String(req.params.usuarioId)
+          usuarioId
         );
 
 
@@ -285,7 +312,9 @@ export async function marcarTodasComoLidas(
         'Erro interno ao marcar notificações como lidas.'
 
     });
+
   }
+
 }
 
 
@@ -294,7 +323,7 @@ export async function marcarTodasComoLidas(
 // =====================================================
 
 export async function excluirNotificacao(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
 
@@ -330,5 +359,8 @@ export async function excluirNotificacao(
         'Não foi possível excluir a notificação.'
 
     });
+
   }
+
 }
+

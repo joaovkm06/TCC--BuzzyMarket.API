@@ -1,111 +1,317 @@
+
+import { Types } from 'mongoose';
+
 import { CarrinhoModel } from '../model/carrinho';
 
-export async function criarCarrinho(dados: any) {
-  return await CarrinhoModel.create(dados);
+
+// =====================================================
+// CRIAR CARRINHO
+// =====================================================
+
+export async function criarCarrinho(
+  dados: any
+) {
+
+  return await CarrinhoModel.create(
+    dados
+  );
+
 }
 
-export async function buscarCarrinhoPorUsuario(usuarioId: string) {
+
+// =====================================================
+// BUSCAR CARRINHO POR USUÁRIO
+// =====================================================
+
+export async function buscarCarrinhoPorUsuario(
+  usuarioId: string
+) {
+
   return await CarrinhoModel
-    .findOne({ usuarioId })
-    .populate('usuarioId', 'nome email perfil')
-    .populate('itens.produtoId', 'nome preco imagem estoque ativo lojaId');
+
+    .findOne({
+      usuarioId: new Types.ObjectId(usuarioId)
+    })
+
+    .populate(
+      'usuarioId',
+      'nome email perfil'
+    )
+
+    .populate(
+      'itens.produtoId',
+      'nome preco imagem estoque ativo lojaId'
+    );
+
 }
 
-export async function buscarCarrinhoSemPopulate(usuarioId: string) {
-  return await CarrinhoModel.findOne({ usuarioId });
+
+// =====================================================
+// BUSCAR CARRINHO SEM POPULATE
+// =====================================================
+
+export async function buscarCarrinhoSemPopulate(
+  usuarioId: string
+) {
+
+  return await CarrinhoModel.findOne({
+
+    usuarioId:
+      new Types.ObjectId(usuarioId)
+
+  });
+
 }
 
-export async function buscarCarrinhoPorId(id: string) {
+
+// =====================================================
+// BUSCAR CARRINHO POR ID
+// =====================================================
+
+export async function buscarCarrinhoPorId(
+  id: string
+) {
+
   return await CarrinhoModel
+
     .findById(id)
-    .populate('usuarioId', 'nome email perfil')
-    .populate('itens.produtoId', 'nome preco imagem estoque ativo lojaId');
+
+    .populate(
+      'usuarioId',
+      'nome email perfil'
+    )
+
+    .populate(
+      'itens.produtoId',
+      'nome preco imagem estoque ativo lojaId'
+    );
+
 }
+
+
+// =====================================================
+// ADICIONAR ITEM
+// =====================================================
 
 export async function adicionarItem(
   usuarioId: string,
   item: any
 ) {
+
   return await CarrinhoModel.findOneAndUpdate(
-    { usuarioId },
+
     {
-      $push: {
-        itens: item
-      }
+      usuarioId:
+        new Types.ObjectId(usuarioId)
     },
+
     {
+
+      $push: {
+
+        itens: item
+
+      }
+
+    },
+
+    {
+
       new: true,
+
       upsert: true,
+
       runValidators: true
+
     }
+
   )
-    .populate('usuarioId', 'nome email perfil')
-    .populate('itens.produtoId', 'nome preco imagem estoque ativo lojaId');
+
+    .populate(
+      'usuarioId',
+      'nome email perfil'
+    )
+
+    .populate(
+      'itens.produtoId',
+      'nome preco imagem estoque ativo lojaId'
+    );
+
 }
+
+
+// =====================================================
+// ATUALIZAR QUANTIDADE DO ITEM
+// =====================================================
 
 export async function atualizarItem(
   usuarioId: string,
   produtoId: string,
   quantidade: number
 ) {
+
   return await CarrinhoModel.findOneAndUpdate(
+
     {
-      usuarioId,
-      'itens.produtoId': produtoId
+
+      usuarioId:
+        new Types.ObjectId(usuarioId),
+
+      'itens.produtoId':
+        new Types.ObjectId(produtoId)
+
     },
+
     {
+
       $set: {
-        'itens.$.quantidade': quantidade
+
+        'itens.$.quantidade':
+          quantidade
+
       }
+
     },
+
     {
+
       new: true,
+
       runValidators: true
+
     }
+
   )
-    .populate('usuarioId', 'nome email perfil')
-    .populate('itens.produtoId', 'nome preco imagem estoque ativo lojaId');
+
+    .populate(
+      'usuarioId',
+      'nome email perfil'
+    )
+
+    .populate(
+      'itens.produtoId',
+      'nome preco imagem estoque ativo lojaId'
+    );
+
 }
+
+
+// =====================================================
+// REMOVER ITEM
+// =====================================================
 
 export async function removerItem(
   usuarioId: string,
   produtoId: string
 ) {
+
   return await CarrinhoModel.findOneAndUpdate(
-    { usuarioId },
+
     {
+
+      usuarioId:
+        new Types.ObjectId(usuarioId)
+
+    },
+
+    {
+
       $pull: {
+
         itens: {
-          produtoId
+
+          produtoId:
+            new Types.ObjectId(produtoId)
+
         }
+
       }
+
     },
+
     {
+
       new: true
+
     }
+
   )
-    .populate('usuarioId', 'nome email perfil')
-    .populate('itens.produtoId', 'nome preco imagem estoque ativo lojaId');
+
+    .populate(
+      'usuarioId',
+      'nome email perfil'
+    )
+
+    .populate(
+      'itens.produtoId',
+      'nome preco imagem estoque ativo lojaId'
+    );
+
 }
 
-export async function limparCarrinho(usuarioId: string) {
+
+// =====================================================
+// LIMPAR CARRINHO
+// =====================================================
+
+export async function limparCarrinho(
+  usuarioId: string
+) {
+
   return await CarrinhoModel.findOneAndUpdate(
-    { usuarioId },
+
     {
-      $set: {
-        itens: []
-      }
+
+      usuarioId:
+        new Types.ObjectId(usuarioId)
+
     },
+
     {
+
+      $set: {
+
+        itens: []
+
+      }
+
+    },
+
+    {
+
       new: true
+
     }
+
   )
-    .populate('usuarioId', 'nome email perfil')
-    .populate('itens.produtoId', 'nome preco imagem estoque ativo lojaId');
+
+    .populate(
+      'usuarioId',
+      'nome email perfil'
+    )
+
+    .populate(
+      'itens.produtoId',
+      'nome preco imagem estoque ativo lojaId'
+    );
+
 }
 
-export async function excluirCarrinho(usuarioId: string) {
+
+// =====================================================
+// EXCLUIR CARRINHO
+// =====================================================
+
+export async function excluirCarrinho(
+  usuarioId: string
+) {
+
   return await CarrinhoModel.findOneAndDelete({
-    usuarioId
+
+    usuarioId:
+      new Types.ObjectId(usuarioId)
+
   });
+
 }
+

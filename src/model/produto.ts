@@ -1,8 +1,8 @@
-import { model, Schema } from 'mongoose';
+import { model, Schema, Types } from 'mongoose';
 
 export interface Produto {
+  lojaId: Types.ObjectId;                
   id: string;
-  lojaId: string;
   nome: string;
   descricao?: string;
   categoria: string;

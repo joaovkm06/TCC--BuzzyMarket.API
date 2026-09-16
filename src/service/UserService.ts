@@ -1,833 +1,1082 @@
-
 import bcrypt from 'bcrypt';
-
-import { LojaModel } from '../model/loja';
+import { Types } from 'mongoose';
 
 import {
-  UserModel,
-  UserProfile
+UserProfile
 } from '../model/usuario';
 
 import * as userRepository
-  from '../repository/UserRepository';
+from '../repository/UserRepository';
 
 import * as lojaRepository
-  from '../repository/LojaRepository';
-
+from '../repository/LojaRepository';
 
 // ======================================================
-// POST /users
+// FUNÇÃO AUXILIAR DE ERRO
 // ======================================================
 
-export async function criarUsuario(
-  dados: any
+function erro(
+mensagem: string,
+status = 400
+) {
+const error: any =
+new Error(mensagem);
+
+error.status = status;
+
+return error;
+}
+
+// ======================================================
+// VALIDAR OBJECT ID
+// ======================================================
+
+function validarObjectId(
+id: string,
+nomeCampo: string
 ) {
 
-  const {
-    nome,
-    email,
-    senha,
-    perfil,
-    endereco,
-    lojaId
-  } = dados;
+if (
+!id ||
+!Types.ObjectId.isValid(id)
+) {
 
 
-  // ====================================================
-  // VALIDAR CAMPOS OBRIGATÓRIOS
-  // ====================================================
+throw erro(
+  `${nomeCampo} inválido.`
+);
 
-  if (!nome) {
-    const erro: any = new Error(
-      'Nome é obrigatório.'
-    );
 
-    erro.status = 400;
+}
+}
 
-    throw erro;
-  }
+// ======================================================
+// VALIDAR ENDEREÇO
+// ======================================================
 
+function validarEndereco(
+endereco: any
+) {
 
-  if (!email) {
-    const erro: any = new Error(
-      'Email é obrigatório.'
-    );
+if (endereco === undefined) {
+return;
+}
 
-    erro.status = 400;
+if (
+!endereco ||
+typeof endereco !== 'object'
+) {
 
-    throw erro;
-  }
 
+throw erro(
+  'Endereço inválido.'
+);
 
-  if (!senha) {
-    const erro: any = new Error(
-      'Senha é obrigatória.'
-    );
 
-    erro.status = 400;
+}
 
-    throw erro;
-  }
+const camposObrigatorios = [
+'cep',
+'logradouro',
+'numero',
+'bairro',
+'cidade',
+'estado'
+];
 
+for (
+const campo of camposObrigatorios
+) {
 
-  // ====================================================
-  // VALIDAR PERFIL
-  // ====================================================
 
-  if (
-    !Object.values(UserProfile).includes(perfil)
-  ) {
+if (
+  !endereco[campo] ||
+  typeof endereco[campo] !== 'string' ||
+  !endereco[campo].trim()
+) {
 
-    const erro: any =
-      new Error(
-        'Perfil de usuário inválido.'
-      );
-
-    erro.status = 400;
-
-    erro.perfisPermitidos =
-      Object.values(UserProfile);
-
-    throw erro;
-  }
-
-
-  // ====================================================
-  // CLIENTE E ADMIN NÃO PODEM TER LOJA
-  // ====================================================
-
-  if (
-    (
-      perfil === UserProfile.Cliente ||
-      perfil === UserProfile.ADMIN
-    ) &&
-    lojaId
-  ) {
-
-    const erro: any =
-      new Error(
-        'Cliente e administrador não podem possuir lojaId.'
-      );
-
-    erro.status = 400;
-
-    throw erro;
-  }
-
-
-  // ====================================================
-  // FUNCIONÁRIO PRECISA DE LOJA
-  // ====================================================
-
-  if (
-    perfil === UserProfile.Funcionario
-  ) {
-
-    if (!lojaId) {
-
-      const erro: any =
-        new Error(
-          'Funcionário precisa estar vinculado a uma loja.'
-        );
-
-      erro.status = 400;
-
-      throw erro;
-    }
-
-
-    const loja =
-      await lojaRepository.buscarLojaPorId(
-        lojaId.toString()
-      );
-
-
-    if (!loja) {
-
-      const erro: any =
-        new Error(
-          'Loja não encontrada.'
-        );
-
-      erro.status = 404;
-
-      throw erro;
-    }
-  }
-
-
-  // ====================================================
-  // LOGISTA
-  // ====================================================
-
-  /*
-   * O lojista pode ser criado sem lojaId.
-   *
-   * Depois ele poderá criar sua própria loja.
-   */
-
-  if (
-    perfil === UserProfile.Logista &&
-    lojaId
-  ) {
-
-    const loja =
-      await lojaRepository.buscarLojaPorId(
-        lojaId.toString()
-      );
-
-
-    if (!loja) {
-
-      const erro: any =
-        new Error(
-          'Loja não encontrada.'
-        );
-
-      erro.status = 404;
-
-      throw erro;
-    }
-
-
-    if (
-      loja.proprietarioId
-    ) {
-
-      const erro: any =
-        new Error(
-          'Esta loja já possui um proprietário.'
-        );
-
-      erro.status = 400;
-
-      throw erro;
-    }
-  }
-
-
-  // ====================================================
-  // VERIFICAR EMAIL
-  // ====================================================
-
-  const usuarios =
-    await userRepository.listarUsuarios();
-
-  const emailExiste =
-    usuarios.some(
-      (usuario: any) =>
-        usuario.email.toLowerCase() ===
-        email.toLowerCase()
-    );
-
-
-  if (emailExiste) {
-
-    const erro: any =
-      new Error(
-        'Este email já está cadastrado.'
-      );
-
-    erro.status = 400;
-
-    throw erro;
-  }
-
-
-  // ====================================================
-  // CRIPTOGRAFAR SENHA
-  // ====================================================
-
-  const senhaHash =
-    await bcrypt.hash(
-      senha,
-      10
-    );
-
-
-  // ====================================================
-  // CRIAR USUÁRIO
-  // ====================================================
-
-  return await userRepository.criarUsuario({
-
-    nome,
-
-    email,
-
-    senhaHash,
-
-    perfil,
-
-    endereco,
-
-    lojaId
-
-  });
+  throw erro(
+    `O campo ${campo} do endereço é obrigatório.`
+  );
 }
 
 
+}
+}
+
+// ======================================================
+// POST /users
+// CRIAR USUÁRIO
+// ======================================================
+
+export async function criarUsuario(
+dados: any
+) {
+
+const {
+nome,
+email,
+senha,
+perfil,
+endereco,
+lojaId
+} = dados;
+
+// ====================================================
+// CAMPOS OBRIGATÓRIOS
+// ====================================================
+
+if (
+!nome ||
+typeof nome !== 'string' ||
+!nome.trim()
+) {
+
+
+throw erro(
+  'Nome é obrigatório.'
+);
+
+
+}
+
+if (
+!email ||
+typeof email !== 'string' ||
+!email.trim()
+) {
+
+
+throw erro(
+  'Email é obrigatório.'
+);
+
+
+}
+
+if (
+!senha ||
+typeof senha !== 'string'
+) {
+
+
+throw erro(
+  'Senha é obrigatória.'
+);
+
+
+}
+
+// ====================================================
+// VALIDAR SENHA
+// ====================================================
+
+if (senha.length < 6) {
+
+
+throw erro(
+  'A senha deve possuir pelo menos 6 caracteres.'
+);
+
+
+}
+
+// ====================================================
+// PERFIL
+// ====================================================
+
+const perfilFinal =
+perfil || UserProfile.Cliente;
+
+if (
+!Object.values(UserProfile)
+.includes(perfilFinal)
+) {
+
+
+const error: any =
+  erro(
+    'Perfil de usuário inválido.'
+  );
+
+error.perfisPermitidos =
+  Object.values(UserProfile);
+
+throw error;
+
+
+}
+
+// ====================================================
+// REGRA DE SEGURANÇA
+// ====================================================
+
+
+
+if (
+perfilFinal !== UserProfile.Cliente
+) {
+
+
+throw erro(
+  'Novos usuários devem ser cadastrados como cliente.'
+);
+
+
+}
+
+// ====================================================
+// CLIENTE NÃO POSSUI LOJA
+// ====================================================
+
+if (lojaId) {
+
+
+throw erro(
+  'Cliente não pode possuir lojaId.'
+);
+
+
+}
+
+// ====================================================
+// VALIDAR ENDEREÇO
+// ====================================================
+
+validarEndereco(endereco);
+
+// ====================================================
+// VERIFICAR EMAIL
+// ====================================================
+
+const usuarioExistente =
+await userRepository.buscarUsuarioPorEmail(
+email.toLowerCase().trim()
+);
+
+if (usuarioExistente) {
+
+
+throw erro(
+  'Este email já está cadastrado.'
+);
+
+
+}
+
+// ====================================================
+// CRIPTOGRAFAR SENHA
+// ====================================================
+
+const senhaHash =
+await bcrypt.hash(
+senha,
+10
+);
+
+// ====================================================
+// CRIAR USUÁRIO
+// ====================================================
+
+return await userRepository.criarUsuario({
+
+
+nome:
+  nome.trim(),
+
+email:
+  email.toLowerCase().trim(),
+
+senhaHash,
+
+perfil:
+  UserProfile.Cliente,
+
+endereco
+
+});
+}
 
 // ======================================================
 // GET /users
+// LISTAR USUÁRIOS
 // ======================================================
 
 export async function listarUsuarios() {
 
-  return await userRepository.listarUsuarios();
+return await userRepository
+.listarUsuarios();
 
 }
-
-
 
 // ======================================================
 // GET /users/:id
+// BUSCAR USUÁRIO
 // ======================================================
 
 export async function buscarUsuarioPorId(
-  id: string
+id: string
 ) {
 
-  return await userRepository.buscarUsuarioPorId(
-    id
-  );
+validarObjectId(
+id,
+'ID do usuário'
+);
+
+const usuario =
+await userRepository
+.buscarUsuarioPorId(id);
+
+if (!usuario) {
+
+
+throw erro(
+  'Usuário não encontrado.',
+  404
+);
+
 
 }
 
-
+return usuario;
+}
 
 // ======================================================
 // PUT /users/:id
+// ATUALIZAR USUÁRIO
 // ======================================================
 
 export async function atualizarUsuario(
-  id: string,
-  dados: any
+id: string,
+dados: any
 ) {
 
-  const {
-    nome,
-    email,
-    senha,
-    perfil,
-    endereco,
-    lojaId
-  } = dados;
+validarObjectId(
+id,
+'ID do usuário'
+);
 
+// ====================================================
+// BUSCAR USUÁRIO ATUAL
+// ====================================================
 
-  // ====================================================
-  // BUSCAR USUÁRIO ATUAL
-  // ====================================================
+const usuarioAtual =
+await userRepository
+.buscarUsuarioSemPopulate(id);
 
-  const usuarioAtual =
-    await userRepository.buscarUsuarioSemPopulate(
-      id
-    );
+if (!usuarioAtual) {
 
 
-  if (!usuarioAtual) {
+throw erro(
+  'Usuário não encontrado.',
+  404
+);
 
-    const erro: any =
-      new Error(
-        'Usuário não encontrado.'
-      );
 
-    erro.status = 404;
+}
 
-    throw erro;
-  }
+const {
+nome,
+email,
+senha,
+perfil,
+endereco,
+lojaId
+} = dados;
 
+// ====================================================
+// VALIDAR NOME
+// ====================================================
 
-  // ====================================================
-  // DEFINIR PERFIL
-  // ====================================================
+if (
+nome !== undefined &&
+(
+typeof nome !== 'string' ||
+!nome.trim()
+)
+) {
 
-  const perfilAtualizado =
-    perfil || usuarioAtual.perfil;
 
+throw erro(
+  'Nome inválido.'
+);
 
-  // ====================================================
-  // VALIDAR PERFIL
-  // ====================================================
 
-  if (
-    !Object.values(UserProfile).includes(
-      perfilAtualizado
-    )
-  ) {
+}
 
-    const erro: any =
-      new Error(
-        'Perfil de usuário inválido.'
-      );
+// ====================================================
+// VALIDAR EMAIL
+// ====================================================
 
-    erro.status = 400;
+if (email !== undefined) {
 
-    erro.perfisPermitidos =
-      Object.values(UserProfile);
 
-    throw erro;
-  }
+if (
+  typeof email !== 'string' ||
+  !email.trim()
+) {
 
-
-  // ====================================================
-  // CLIENTE E ADMIN NÃO PODEM TER LOJA
-  // ====================================================
-
-  if (
-    (
-      perfilAtualizado === UserProfile.Cliente ||
-      perfilAtualizado === UserProfile.ADMIN
-    ) &&
-    lojaId
-  ) {
-
-    const erro: any =
-      new Error(
-        'Cliente e administrador não podem possuir lojaId.'
-      );
-
-    erro.status = 400;
-
-    throw erro;
-  }
-
-
-  // ====================================================
-  // FUNCIONÁRIO
-  // ====================================================
-
-  if (
-    perfilAtualizado ===
-    UserProfile.Funcionario
-  ) {
-
-    const lojaFinal =
-      lojaId ||
-      usuarioAtual.lojaId;
-
-
-    if (!lojaFinal) {
-
-      const erro: any =
-        new Error(
-          'Funcionário precisa estar vinculado a uma loja.'
-        );
-
-      erro.status = 400;
-
-      throw erro;
-    }
-
-
-    const loja =
-      await lojaRepository.buscarLojaPorId(
-        lojaFinal.toString()
-      );
-
-
-    if (!loja) {
-
-      const erro: any =
-        new Error(
-          'Loja não encontrada.'
-        );
-
-      erro.status = 404;
-
-      throw erro;
-    }
-  }
-
-
-  // ====================================================
-  // LOGISTA
-  // ====================================================
-
-  let lojaFinal =
-    lojaId ||
-    usuarioAtual.lojaId;
-
-
-  if (
-    perfilAtualizado ===
-    UserProfile.Logista
-  ) {
-
-    if (lojaId) {
-
-      const loja =
-        await lojaRepository.buscarLojaPorId(
-          lojaId.toString()
-        );
-
-
-      if (!loja) {
-
-        const erro: any =
-          new Error(
-            'Loja não encontrada.'
-          );
-
-        erro.status = 404;
-
-        throw erro;
-      }
-
-
-      if (
-        loja.proprietarioId &&
-        loja.proprietarioId.toString() !==
-        usuarioAtual._id.toString()
-      ) {
-
-        const erro: any =
-          new Error(
-            'Esta loja já pertence a outro proprietário.'
-          );
-
-        erro.status = 400;
-
-        throw erro;
-      }
-    }
-  }
-
-
-  // ====================================================
-  // DEFINIR LOJA PARA SALVAR
-  // ====================================================
-
-  let lojaParaSalvar;
-
-
-  if (
-    perfilAtualizado ===
-    UserProfile.Funcionario
-  ) {
-
-    lojaParaSalvar =
-      lojaId ||
-      usuarioAtual.lojaId;
-
-  }
-
-  else if (
-    perfilAtualizado ===
-    UserProfile.Logista
-  ) {
-
-    lojaParaSalvar =
-      lojaFinal;
-
-  }
-
-  else {
-
-    lojaParaSalvar =
-      undefined;
-  }
-
-
-  // ====================================================
-  // PREPARAR DADOS
-  // ====================================================
-
-  const dadosAtualizacao: any = {
-
-    nome,
-
-    email,
-
-    perfil: perfilAtualizado,
-
-    endereco,
-
-    lojaId: lojaParaSalvar
-
-  };
-
-
-  // ====================================================
-  // ATUALIZAR SENHA SE FOI INFORMADA
-  // ====================================================
-
-  if (senha) {
-
-    dadosAtualizacao.senhaHash =
-      await bcrypt.hash(
-        senha,
-        10
-      );
-  }
-
-
-  // ====================================================
-  // ATUALIZAR USUÁRIO
-  // ====================================================
-
-  return await userRepository.atualizarUsuario(
-    id,
-    dadosAtualizacao
+  throw erro(
+    'Email inválido.'
   );
 }
 
 
+const emailNormalizado =
+  email.toLowerCase().trim();
+
+
+const usuarioComEmail =
+  await userRepository
+    .buscarUsuarioPorEmail(
+      emailNormalizado
+    );
+
+
+if (
+  usuarioComEmail &&
+  usuarioComEmail._id.toString() !==
+    usuarioAtual._id.toString()
+) {
+
+  throw erro(
+    'Este email já está cadastrado.'
+  );
+}
+
+
+}
+
+// ====================================================
+// VALIDAR ENDEREÇO
+// ====================================================
+
+validarEndereco(
+endereco
+);
+
+// ====================================================
+// DEFINIR PERFIL
+// ====================================================
+
+const perfilAtualizado =
+perfil ||
+usuarioAtual.perfil;
+
+if (
+!Object.values(UserProfile)
+.includes(perfilAtualizado)
+) {
+
+
+const error: any =
+  erro(
+    'Perfil de usuário inválido.'
+  );
+
+error.perfisPermitidos =
+  Object.values(UserProfile);
+
+throw error;
+
+
+}
+
+// ====================================================
+// LOJA
+// ====================================================
+
+let lojaParaSalvar:
+Types.ObjectId |
+undefined;
+
+// ====================================================
+// CLIENTE
+// ====================================================
+
+if (
+perfilAtualizado ===
+UserProfile.Cliente
+) {
+
+
+if (lojaId) {
+
+  throw erro(
+    'Cliente não pode possuir lojaId.'
+  );
+}
+
+
+lojaParaSalvar =
+  undefined;
+
+}
+
+// ====================================================
+// ADMIN
+// ====================================================
+
+else if (
+perfilAtualizado ===
+UserProfile.ADMIN
+) {
+
+
+if (lojaId) {
+
+  throw erro(
+    'Administrador não pode possuir lojaId.'
+  );
+}
+
+
+lojaParaSalvar =
+  undefined;
+
+
+}
+
+// ====================================================
+// FUNCIONÁRIO
+// ====================================================
+
+else if (
+perfilAtualizado ===
+UserProfile.Funcionario
+) {
+
+
+const lojaFinal =
+  lojaId ||
+  usuarioAtual.lojaId;
+
+
+if (!lojaFinal) {
+
+  throw erro(
+    'Funcionário precisa estar vinculado a uma loja.'
+  );
+}
+
+
+validarObjectId(
+  lojaFinal.toString(),
+  'lojaId'
+);
+
+
+const loja =
+  await lojaRepository
+    .buscarLojaPorIdSemPopulate(
+      lojaFinal.toString()
+    );
+
+
+if (!loja) {
+
+  throw erro(
+    'Loja não encontrada.',
+    404
+  );
+}
+
+
+lojaParaSalvar =
+  new Types.ObjectId(
+    lojaFinal.toString()
+  );
+
+
+}
+
+// ====================================================
+// LOJISTA
+// ====================================================
+
+else if (
+perfilAtualizado ===
+UserProfile.Logista
+) {
+
+
+/*
+ * O lojista pode existir sem loja.
+ */
+
+if (lojaId) {
+
+  validarObjectId(
+    lojaId.toString(),
+    'lojaId'
+  );
+
+
+  const loja =
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        lojaId.toString()
+      );
+
+
+  if (!loja) {
+
+    throw erro(
+      'Loja não encontrada.',
+      404
+    );
+  }
+
+
+  if (
+    loja.proprietarioId &&
+    loja.proprietarioId.toString() !==
+      usuarioAtual._id.toString()
+  ) {
+
+    throw erro(
+      'Esta loja já pertence a outro proprietário.'
+    );
+  }
+
+
+  lojaParaSalvar =
+    new Types.ObjectId(
+      lojaId.toString()
+    );
+}
+
+else if (
+  usuarioAtual.lojaId
+) {
+
+  lojaParaSalvar =
+    usuarioAtual.lojaId;
+}
+
+
+}
+
+// ====================================================
+// PREPARAR DADOS
+// ====================================================
+
+const dadosAtualizacao: any = {};
+
+if (nome !== undefined) {
+
+
+dadosAtualizacao.nome =
+  nome.trim();
+
+
+}
+
+if (email !== undefined) {
+
+
+dadosAtualizacao.email =
+  email.toLowerCase().trim();
+
+
+}
+
+if (endereco !== undefined) {
+
+
+dadosAtualizacao.endereco =
+  endereco;
+
+
+}
+
+if (perfil !== undefined) {
+
+
+dadosAtualizacao.perfil =
+  perfilAtualizado;
+
+
+}
+
+
+
+if (
+perfilAtualizado ===
+UserProfile.Funcionario ||
+perfilAtualizado ===
+UserProfile.Logista
+) {
+
+
+dadosAtualizacao.lojaId =
+  lojaParaSalvar;
+
+}
+
+else {
+
+
+dadosAtualizacao.$unset = {
+  lojaId: 1
+};
+
+
+}
+
+// ====================================================
+// SENHA
+// ====================================================
+
+if (senha !== undefined) {
+
+
+if (
+  typeof senha !== 'string' ||
+  senha.length < 6
+) {
+
+  throw erro(
+    'A senha deve possuir pelo menos 6 caracteres.'
+  );
+}
+
+
+dadosAtualizacao.senhaHash =
+  await bcrypt.hash(
+    senha,
+    10
+  );
+
+}
+
+// ====================================================
+// ATUALIZAR
+// ====================================================
+
+return await userRepository
+.atualizarUsuario(
+id,
+dadosAtualizacao
+);
+}
 
 // ======================================================
 // DELETE /users/:id
+// EXCLUIR USUÁRIO
 // ======================================================
 
 export async function excluirUsuario(
-  id: string
+id: string
 ) {
 
-  // ====================================================
-  // BUSCAR USUÁRIO
-  // ====================================================
+validarObjectId(
+id,
+'ID do usuário'
+);
 
-  const usuario =
-    await userRepository.buscarUsuarioSemPopulate(
-      id
-    );
+// ====================================================
+// BUSCAR USUÁRIO
+// ====================================================
 
+const usuario =
+await userRepository
+.buscarUsuarioSemPopulate(id);
 
-  if (!usuario) {
-
-    const erro: any =
-      new Error(
-        'Usuário não encontrado.'
-      );
-
-    erro.status = 404;
-
-    throw erro;
-  }
+if (!usuario) {
 
 
-  // ====================================================
-  // VERIFICAR SE É DONO DE UMA LOJA
-  // ====================================================
-
-  const loja =
-    await lojaRepository.buscarLojaDoProprietario(
-      id
-    );
+throw erro(
+  'Usuário não encontrado.',
+  404
+);
 
 
-  if (loja) {
-
-    const erro: any =
-      new Error(
-        'Não é possível excluir um usuário que possui uma loja.'
-      );
-
-    erro.status = 400;
-
-    throw erro;
-  }
-
-
-  // ====================================================
-  // EXCLUIR USUÁRIO
-  // ====================================================
-
-  return await userRepository.excluirUsuario(
-    id
-  );
 }
 
+// ====================================================
+// VERIFICAR SE POSSUI LOJA
+// ====================================================
+
+const loja =
+await lojaRepository
+.buscarLojaDoProprietario(id);
+
+if (loja) {
+throw erro(
+  'Não é possível excluir um usuário que possui uma loja.'
+);
+
+
+}
+
+// ====================================================
+// EXCLUIR
+// ====================================================
+
+return await userRepository
+.excluirUsuario(id);
+}
 
 // ======================================================
+// PATCH /users/:id/funcionario
 // CONTRATAR CLIENTE COMO FUNCIONÁRIO
 // ======================================================
 
 export async function contratarClienteComoFuncionario(
-  clienteId: string,
-  solicitanteId: string,
-  lojaIdInformada?: string
+clienteId: string,
+solicitanteId: string,
+lojaIdInformada?: string
 ) {
-  // ------------------------------------------------------
-  // 1. Buscar quem está fazendo a contratação
-  // ------------------------------------------------------
 
-  const solicitante = await UserModel.findById(solicitanteId);
+validarObjectId(
+clienteId,
+'clienteId'
+);
 
-  if (!solicitante) {
-    const error: any = new Error(
-      'Usuário que está realizando a contratação não foi encontrado.'
-    );
+validarObjectId(
+solicitanteId,
+'solicitanteId'
+);
 
-    error.status = 404;
+// ====================================================
+// BUSCAR SOLICITANTE
+// ====================================================
 
-    throw error;
-  }
+const solicitante =
+await userRepository
+.buscarUsuarioSemPopulate(
+solicitanteId
+);
 
+if (!solicitante) {
 
-  // ------------------------------------------------------
-  // 2. Buscar o cliente que será contratado
-  // ------------------------------------------------------
 
-  const cliente = await UserModel.findById(clienteId);
+throw erro(
+  'Usuário que está realizando a contratação não foi encontrado.',
+  404
+);
 
-  if (!cliente) {
-    const error: any = new Error(
-      'Cliente não encontrado.'
-    );
 
-    error.status = 404;
+}
 
-    throw error;
-  }
+// ====================================================
+// BUSCAR CLIENTE
+// ====================================================
 
+const cliente =
+await userRepository
+.buscarUsuarioSemPopulate(
+clienteId
+);
 
-  // ------------------------------------------------------
-  // 3. Só CLIENTE pode virar FUNCIONÁRIO
-  // ------------------------------------------------------
+if (!cliente) {
 
-  if (cliente.perfil !== UserProfile.Cliente) {
-    const error: any = new Error(
-      'Somente usuários com perfil cliente podem ser contratados como funcionário.'
-    );
 
-    error.status = 400;
+throw erro(
+  'Cliente não encontrado.',
+  404
+);
 
-    throw error;
-  }
 
+}
 
-  // ------------------------------------------------------
-  // 4. Descobrir a loja da contratação
-  // ------------------------------------------------------
+// ====================================================
+// SOMENTE CLIENTE PODE SER CONTRATADO
+// ====================================================
 
-  let lojaId: string;
+if (
+cliente.perfil !==
+UserProfile.Cliente
+) {
 
 
-  // ------------------------------------------------------
-  // LOJISTA
-  // ------------------------------------------------------
+throw erro(
+  'Somente usuários com perfil cliente podem ser contratados como funcionário.'
+);
 
-  if (solicitante.perfil === UserProfile.Logista) {
 
-    // O lojista precisa possuir uma loja.
+}
 
-    if (!solicitante.lojaId) {
-      const error: any = new Error(
-        'O lojista não possui uma loja vinculada.'
-      );
+// ====================================================
+// DEFINIR LOJA
+// ====================================================
 
-      error.status = 400;
+let lojaId: string;
 
-      throw error;
-    }
+// ====================================================
+// LOJISTA
+// ====================================================
 
-    // IMPORTANTE:
-    // Ignoramos lojaId enviado pelo Postman.
-    // O lojista só pode contratar para a própria loja.
+if (
+solicitante.perfil ===
+UserProfile.Logista
+) {
 
-    lojaId = solicitante.lojaId.toString();
 
-  }
+if (
+  !solicitante.lojaId
+) {
 
-
-  // ------------------------------------------------------
-  // ADMIN
-  // ------------------------------------------------------
-
-  else if (solicitante.perfil === UserProfile.ADMIN) {
-
-    // Admin precisa informar qual loja receberá
-    // o novo funcionário.
-
-    if (!lojaIdInformada) {
-      const error: any = new Error(
-        'O administrador precisa informar o lojaId.'
-      );
-
-      error.status = 400;
-
-      throw error;
-    }
-
-    lojaId = lojaIdInformada;
-
-  }
-
-
-  // ------------------------------------------------------
-  // QUALQUER OUTRO PERFIL
-  // ------------------------------------------------------
-
-  else {
-
-    const error: any = new Error(
-      'Você não possui permissão para contratar funcionários.'
-    );
-
-    error.status = 403;
-
-    throw error;
-  }
-
-
-  // ------------------------------------------------------
-  // 5. Verificar se a loja existe
-  // ------------------------------------------------------
-
-  const loja = await LojaModel.findById(lojaId);
-
-  if (!loja) {
-    const error: any = new Error(
-      'Loja não encontrada.'
-    );
-
-    error.status = 404;
-
-    throw error;
-  }
-
-
-  // ------------------------------------------------------
-  // 6. Se for LOJISTA, garantir que a loja pertence a ele
-  // ------------------------------------------------------
-
-  if (solicitante.perfil === UserProfile.Logista) {
-
-    const proprietarioId =
-      loja.proprietarioId?.toString();
-
-    if (
-      proprietarioId !==
-      solicitante._id.toString()
-    ) {
-      const error: any = new Error(
-        'Você só pode contratar funcionários para sua própria loja.'
-      );
-
-      error.status = 403;
-
-      throw error;
-    }
-  }
-
-
-  // ------------------------------------------------------
-  // 7. Transformar CLIENTE em FUNCIONÁRIO
-  // ------------------------------------------------------
-
-  cliente.perfil = UserProfile.Funcionario;
-
-  cliente.lojaId = loja._id;
-
-  await cliente.save();
-
-
-  // ------------------------------------------------------
-  // 8. Retornar funcionário
-  // ------------------------------------------------------
-
-  return cliente;
+  throw erro(
+    'O lojista não possui uma loja vinculada.'
+  );
 }
 
 
+lojaId =
+  solicitante.lojaId.toString();
 
+
+}
+
+// ====================================================
+// ADMIN
+// ====================================================
+
+else if (
+solicitante.perfil ===
+UserProfile.ADMIN
+) {
+
+
+if (!lojaIdInformada) {
+
+  throw erro(
+    'O administrador precisa informar o lojaId.'
+  );
+}
+
+
+validarObjectId(
+  lojaIdInformada,
+  'lojaId'
+);
+
+
+lojaId =
+  lojaIdInformada;
+
+
+}
+
+// ====================================================
+// OUTROS PERFIS
+// ====================================================
+
+else {
+
+
+throw erro(
+  'Você não possui permissão para contratar funcionários.',
+  403
+);
+
+
+}
+
+// ====================================================
+// BUSCAR LOJA
+// ====================================================
+
+const loja =
+await lojaRepository
+.buscarLojaPorIdSemPopulate(
+lojaId
+);
+
+if (!loja) {
+
+
+throw erro(
+  'Loja não encontrada.',
+  404
+);
+
+
+}
+
+// ====================================================
+// LOJISTA SÓ PODE CONTRATAR NA PRÓPRIA LOJA
+// ====================================================
+
+if (
+solicitante.perfil ===
+UserProfile.Logista
+) {
+
+
+const proprietarioId =
+  loja.proprietarioId?.toString();
+
+
+if (
+  proprietarioId !==
+  solicitante._id.toString()
+) {
+
+  throw erro(
+    'Você só pode contratar funcionários para sua própria loja.',
+    403
+  );
+}
+
+
+}
+
+// ====================================================
+// TRANSFORMAR CLIENTE EM FUNCIONÁRIO
+// ====================================================
+
+return await userRepository
+.atualizarUsuario(
+clienteId,
+{
+perfil:
+UserProfile.Funcionario,
+
+
+    lojaId:
+      loja._id
+  }
+);
+
+
+}
+
+// ======================================================
+// GET /users/funcionarios/:lojaId
+// LISTAR FUNCIONÁRIOS DA LOJA
+// ======================================================
+
+export async function listarFuncionariosDaLoja(
+lojaId: string
+) {
+
+validarObjectId(
+lojaId,
+'lojaId'
+);
+
+const loja =
+await lojaRepository
+.buscarLojaPorIdSemPopulate(
+lojaId
+);
+
+if (!loja) {
+
+
+throw erro(
+  'Loja não encontrada.',
+  404
+);
+
+
+}
+
+return await userRepository
+.listarFuncionariosDaLoja(
+lojaId
+);
+}

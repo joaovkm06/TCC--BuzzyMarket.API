@@ -1,13 +1,21 @@
+
+import { Types } from 'mongoose';
+
 import * as pagamentoRepository
-  from '../repository/PagamentoRepositoy';
+  from '../repository/PagamentoRepository';
 
 import * as pedidoRepository
   from '../repository/PedidoRepository';
 
+import {
+  MetodoPagamento,
+  StatusPagamento
+} from '../model/pagamento';
 
-// =====================================================
+
+// ======================================================
 // CRIAR PAGAMENTO
-// =====================================================
+// ======================================================
 
 export async function criarPagamento(
   dados: any
@@ -21,9 +29,9 @@ export async function criarPagamento(
   } = dados;
 
 
-  // ===================================================
-  // VALIDAÇÃO
-  // ===================================================
+  // ====================================================
+  // VALIDAÇÃO DOS CAMPOS
+  // ====================================================
 
   if (
     !pedidoId ||
@@ -41,33 +49,54 @@ export async function criarPagamento(
   }
 
 
-  // ===================================================
-  // MÉTODOS PERMITIDOS
-  // ===================================================
+  // ====================================================
+  // VALIDA ID DO PEDIDO
+  // ====================================================
 
-  const metodosPermitidos = [
+  if (!Types.ObjectId.isValid(pedidoId)) {
+
+    const erro: any = new Error(
+      'pedidoId inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ====================================================
+  // MÉTODOS PERMITIDOS
+  // ====================================================
+
+  const metodosPermitidos: MetodoPagamento[] = [
     'pix',
     'cartao',
     'boleto'
   ];
 
-
-  if (!metodosPermitidos.includes(metodo)) {
+  if (
+    !metodosPermitidos.includes(
+      metodo as MetodoPagamento
+    )
+  ) {
 
     const erro: any = new Error(
       'Método de pagamento inválido.'
     );
 
     erro.status = 400;
-    erro.metodosPermitidos = metodosPermitidos;
+
+    erro.metodosPermitidos =
+      metodosPermitidos;
 
     throw erro;
   }
 
 
-  // ===================================================
+  // ====================================================
   // VALIDA VALOR
-  // ===================================================
+  // ====================================================
 
   if (
     typeof valor !== 'number' ||
@@ -84,119 +113,9 @@ export async function criarPagamento(
   }
 
 
-  // ===================================================
-  // VERIFICA PEDIDO
-  // ===================================================
-
-  const pedido =
-    await pedidoRepository
-      .buscarPedidoSemPopulate(
-        pedidoId.toString()
-      );
-
-
-  if (!pedido) {
-
-    const erro: any = new Error(
-      'Pedido não encontrado.'
-    );
-
-    erro.status = 404;
-
-    throw erro;
-  }
-
-
-  // ===================================================
-  // VERIFICA PAGAMENTO EXISTENTE
-  // ===================================================
-
-  const pagamentoExistente =
-    await pagamentoRepository
-      .buscarPagamentoPorPedido(
-        pedidoId.toString()
-      );
-
-
-  if (pagamentoExistente) {
-
-    const erro: any = new Error(
-      'Este pedido já possui um pagamento.'
-    );
-
-    erro.status = 400;
-    erro.pagamentoId =
-      pagamentoExistente._id;
-
-    throw erro;
-  }
-
-
-  // ===================================================
-  // CONFERE VALOR DO PEDIDO
-  // ===================================================
-
-  if (valor !== pedido.valorTotal) {
-
-    const erro: any = new Error(
-      'O valor do pagamento deve ser igual ao valor total do pedido.'
-    );
-
-    erro.status = 400;
-
-    erro.valorPedido =
-      pedido.valorTotal;
-
-    erro.valorInformado =
-      valor;
-
-    throw erro;
-  }
-
-
-  // ===================================================
-  // CRIA PAGAMENTO
-  // ===================================================
-
-  return await pagamentoRepository
-    .criarPagamento({
-
-      pedidoId,
-
-      valor: pedido.valorTotal,
-
-      metodo,
-
-      status: 'pendente',
-
-      transacaoId
-
-    });
-}
-
-
-// =====================================================
-// LISTAR TODOS
-// =====================================================
-
-export async function listarPagamentos() {
-
-  return await pagamentoRepository
-    .listarPagamentos();
-}
-
-
-// =====================================================
-// BUSCAR POR PEDIDO
-// =====================================================
-
-export async function buscarPagamentoPorPedido(
-  pedidoId: string
-) {
-
-  // ===================================================
-  // VERIFICA PEDIDO
-  // ===================================================
+  // ====================================================
+  // BUSCA PEDIDO
+  // ====================================================
 
   const pedido =
     await pedidoRepository
@@ -217,9 +136,159 @@ export async function buscarPagamentoPorPedido(
   }
 
 
-  // ===================================================
+  // ====================================================
+  // PEDIDO CANCELADO
+  // ====================================================
+
+  if (
+    pedido.status === 'cancelado'
+  ) {
+
+    const erro: any = new Error(
+      'Não é possível criar pagamento para um pedido cancelado.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ====================================================
+  // VERIFICA PAGAMENTO EXISTENTE
+  // ====================================================
+
+  const pagamentoExistente =
+    await pagamentoRepository
+      .buscarPagamentoPorPedido(
+        pedidoId
+      );
+
+
+  if (pagamentoExistente) {
+
+    const erro: any = new Error(
+      'Este pedido já possui um pagamento.'
+    );
+
+    erro.status = 400;
+
+    erro.pagamentoId =
+      pagamentoExistente._id;
+
+    throw erro;
+  }
+
+
+  // ====================================================
+  // CONFERE VALOR DO PEDIDO
+  // ====================================================
+
+  if (valor !== pedido.valorTotal) {
+
+    const erro: any = new Error(
+      'O valor do pagamento deve ser igual ao valor total do pedido.'
+    );
+
+    erro.status = 400;
+
+    erro.valorPedido =
+      pedido.valorTotal;
+
+    erro.valorInformado =
+      valor;
+
+    throw erro;
+  }
+
+
+  // ====================================================
+  // CRIA PAGAMENTO
+  // ====================================================
+
+  return await pagamentoRepository
+    .criarPagamento({
+
+      pedidoId:
+        new Types.ObjectId(pedidoId),
+
+      // O valor oficial vem do pedido.
+      valor:
+        pedido.valorTotal,
+
+      metodo:
+        metodo as MetodoPagamento,
+
+      status:
+        'pendente',
+
+      transacaoId
+    });
+}
+
+
+// ======================================================
+// LISTAR TODOS
+// ======================================================
+
+export async function listarPagamentos() {
+
+  return await pagamentoRepository
+    .listarPagamentos();
+
+}
+
+
+// ======================================================
+// BUSCAR PAGAMENTO POR PEDIDO
+// ======================================================
+
+export async function buscarPagamentoPorPedido(
+  pedidoId: string
+) {
+
+  // ====================================================
+  // VALIDA ID
+  // ====================================================
+
+  if (!Types.ObjectId.isValid(pedidoId)) {
+
+    const erro: any = new Error(
+      'pedidoId inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ====================================================
+  // VERIFICA PEDIDO
+  // ====================================================
+
+  const pedido =
+    await pedidoRepository
+      .buscarPedidoSemPopulate(
+        pedidoId
+      );
+
+
+  if (!pedido) {
+
+    const erro: any = new Error(
+      'Pedido não encontrado.'
+    );
+
+    erro.status = 404;
+
+    throw erro;
+  }
+
+
+  // ====================================================
   // BUSCA PAGAMENTO
-  // ===================================================
+  // ====================================================
 
   const pagamento =
     await pagamentoRepository
@@ -244,17 +313,31 @@ export async function buscarPagamentoPorPedido(
 }
 
 
-// =====================================================
-// BUSCAR POR ID
-// =====================================================
+// ======================================================
+// BUSCAR PAGAMENTO POR ID
+// ======================================================
 
 export async function buscarPagamentoPorId(
   id: string
 ) {
 
+  if (!Types.ObjectId.isValid(id)) {
+
+    const erro: any = new Error(
+      'ID do pagamento inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
   const pagamento =
     await pagamentoRepository
-      .buscarPagamentoPorId(id);
+      .buscarPagamentoPorId(
+        id
+      );
 
 
   if (!pagamento) {
@@ -273,20 +356,20 @@ export async function buscarPagamentoPorId(
 }
 
 
-// =====================================================
+// ======================================================
 // ATUALIZAR STATUS
-// =====================================================
+// ======================================================
 
 export async function atualizarStatusPagamento(
   id: string,
   status: string
 ) {
 
-  // ===================================================
+  // ====================================================
   // STATUS PERMITIDOS
-  // ===================================================
+  // ====================================================
 
-  const statusPermitidos = [
+  const statusPermitidos: StatusPagamento[] = [
     'pendente',
     'aprovado',
     'recusado',
@@ -294,13 +377,18 @@ export async function atualizarStatusPagamento(
   ];
 
 
-  if (!statusPermitidos.includes(status)) {
+  if (
+    !statusPermitidos.includes(
+      status as StatusPagamento
+    )
+  ) {
 
     const erro: any = new Error(
       'Status de pagamento inválido.'
     );
 
     erro.status = 400;
+
     erro.statusPermitidos =
       statusPermitidos;
 
@@ -308,13 +396,31 @@ export async function atualizarStatusPagamento(
   }
 
 
-  // ===================================================
+  // ====================================================
+  // VALIDA ID
+  // ====================================================
+
+  if (!Types.ObjectId.isValid(id)) {
+
+    const erro: any = new Error(
+      'ID do pagamento inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ====================================================
   // BUSCA PAGAMENTO
-  // ===================================================
+  // ====================================================
 
   const pagamento =
     await pagamentoRepository
-      .buscarPagamentoSemPopulate(id);
+      .buscarPagamentoSemPopulate(
+        id
+      );
 
 
   if (!pagamento) {
@@ -329,9 +435,9 @@ export async function atualizarStatusPagamento(
   }
 
 
-  // ===================================================
+  // ====================================================
   // APROVADO NÃO PODE VOLTAR
-  // ===================================================
+  // ====================================================
 
   if (
     pagamento.status === 'aprovado' &&
@@ -348,9 +454,9 @@ export async function atualizarStatusPagamento(
   }
 
 
-  // ===================================================
+  // ====================================================
   // CANCELADO NÃO PODE SER ALTERADO
-  // ===================================================
+  // ====================================================
 
   if (
     pagamento.status === 'cancelado' &&
@@ -367,32 +473,56 @@ export async function atualizarStatusPagamento(
   }
 
 
-  // ===================================================
-  // ATUALIZA
-  // ===================================================
+  // ====================================================
+  // ATUALIZA STATUS
+  // ====================================================
 
   pagamento.status =
-    status as any;
+    status as StatusPagamento;
 
   await pagamento.save();
 
 
   return await pagamentoRepository
-    .buscarPagamentoPorId(id);
+    .buscarPagamentoPorId(
+      id
+    );
 }
 
 
-// =====================================================
+// ======================================================
 // CANCELAR PAGAMENTO
-// =====================================================
+// ======================================================
 
 export async function cancelarPagamento(
   id: string
 ) {
 
+  // ====================================================
+  // VALIDA ID
+  // ====================================================
+
+  if (!Types.ObjectId.isValid(id)) {
+
+    const erro: any = new Error(
+      'ID do pagamento inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ====================================================
+  // BUSCA PAGAMENTO
+  // ====================================================
+
   const pagamento =
     await pagamentoRepository
-      .buscarPagamentoSemPopulate(id);
+      .buscarPagamentoSemPopulate(
+        id
+      );
 
 
   if (!pagamento) {
@@ -407,9 +537,9 @@ export async function cancelarPagamento(
   }
 
 
-  // ===================================================
+  // ====================================================
   // NÃO PODE CANCELAR APROVADO
-  // ===================================================
+  // ====================================================
 
   if (
     pagamento.status === 'aprovado'
@@ -425,9 +555,9 @@ export async function cancelarPagamento(
   }
 
 
-  // ===================================================
+  // ====================================================
   // JÁ CANCELADO
-  // ===================================================
+  // ====================================================
 
   if (
     pagamento.status === 'cancelado'
@@ -443,9 +573,9 @@ export async function cancelarPagamento(
   }
 
 
-  // ===================================================
+  // ====================================================
   // CANCELA
-  // ===================================================
+  // ====================================================
 
   pagamento.status =
     'cancelado';
@@ -454,5 +584,8 @@ export async function cancelarPagamento(
 
 
   return await pagamentoRepository
-    .buscarPagamentoPorId(id);
+    .buscarPagamentoPorId(
+      id
+    );
 }
+

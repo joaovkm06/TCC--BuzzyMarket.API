@@ -1,13 +1,25 @@
+
 import { Types } from 'mongoose';
-import { Loja, LojaModel, StatusLoja } from '../model/loja';
+
+import {
+  Loja,
+  LojaModel,
+  StatusLoja
+} from '../model/loja';
 
 
 // ======================================================
 // CRIAR LOJA
 // ======================================================
 
-export async function criarLoja(dados: any) {
-  return await LojaModel.create(dados);
+export async function criarLoja(
+  dados: any
+) {
+
+  return await LojaModel.create(
+    dados
+  );
+
 }
 
 
@@ -16,13 +28,17 @@ export async function criarLoja(dados: any) {
 // ======================================================
 
 export async function listarLojas() {
+
   return await LojaModel
     .find()
     .populate(
       'proprietarioId',
       'nome email perfil'
     )
-    .sort({ criadoEm: -1 });
+    .sort({
+      criadoEm: -1
+    });
+
 }
 
 
@@ -30,13 +46,17 @@ export async function listarLojas() {
 // BUSCAR LOJA POR ID
 // ======================================================
 
-export async function buscarLojaPorId(id: string) {
+export async function buscarLojaPorId(
+  id: string
+) {
+
   return await LojaModel
     .findById(id)
     .populate(
       'proprietarioId',
       'nome email perfil'
     );
+
 }
 
 
@@ -44,8 +64,13 @@ export async function buscarLojaPorId(id: string) {
 // BUSCAR LOJA SEM POPULATE
 // ======================================================
 
-export async function buscarLojaPorIdSemPopulate(id: string) {
-  return await LojaModel.findById(id);
+export async function buscarLojaPorIdSemPopulate(
+  id: string
+) {
+
+  return await LojaModel
+    .findById(id);
+
 }
 
 
@@ -56,9 +81,16 @@ export async function buscarLojaPorIdSemPopulate(id: string) {
 export async function buscarLojaDoProprietario(
   proprietarioId: string
 ) {
+
   return await LojaModel.findOne({
-    proprietarioId: new Types.ObjectId(proprietarioId)
+
+    proprietarioId:
+      new Types.ObjectId(
+        proprietarioId
+      )
+
   });
+
 }
 
 
@@ -69,13 +101,19 @@ export async function buscarLojaDoProprietario(
 export async function buscarLojasPorStatus(
   status: StatusLoja
 ): Promise<Loja[]> {
+
   return await LojaModel
-    .find({ status })
+    .find({
+      status
+    })
     .populate(
       'proprietarioId',
       'nome email perfil'
     )
-    .sort({ criadoEm: -1 });
+    .sort({
+      criadoEm: -1
+    });
+
 }
 
 
@@ -86,18 +124,24 @@ export async function buscarLojasPorStatus(
 export async function buscarLojasPorCategoria(
   categoria: string
 ) {
+
   return await LojaModel
     .find({
+
       categoria: {
         $regex: categoria,
         $options: 'i'
       }
+
     })
     .populate(
       'proprietarioId',
       'nome email perfil'
     )
-    .sort({ nome: 1 });
+    .sort({
+      nome: 1
+    });
+
 }
 
 
@@ -108,18 +152,24 @@ export async function buscarLojasPorCategoria(
 export async function buscarLojasPorCidade(
   cidade: string
 ) {
+
   return await LojaModel
     .find({
+
       'endereco.cidade': {
         $regex: cidade,
         $options: 'i'
       }
+
     })
     .populate(
       'proprietarioId',
       'nome email perfil'
     )
-    .sort({ nome: 1 });
+    .sort({
+      nome: 1
+    });
+
 }
 
 
@@ -131,19 +181,25 @@ export async function atualizarLoja(
   id: string,
   dados: any
 ) {
+
   return await LojaModel
     .findByIdAndUpdate(
+
       id,
+
       dados,
+
       {
         new: true,
         runValidators: true
       }
+
     )
     .populate(
       'proprietarioId',
       'nome email perfil'
     );
+
 }
 
 
@@ -153,21 +209,29 @@ export async function atualizarLoja(
 
 export async function atualizarStatusLoja(
   id: string,
-  status: string
+  status: StatusLoja
 ) {
+
   return await LojaModel
     .findByIdAndUpdate(
+
       id,
-      { status },
+
+      {
+        status
+      },
+
       {
         new: true,
         runValidators: true
       }
+
     )
     .populate(
       'proprietarioId',
       'nome email perfil'
     );
+
 }
 
 
@@ -175,8 +239,13 @@ export async function atualizarStatusLoja(
 // EXCLUIR LOJA
 // ======================================================
 
-export async function excluirLoja(id: string) {
-  return await LojaModel.findByIdAndDelete(id);
+export async function excluirLoja(
+  id: string
+) {
+
+  return await LojaModel
+    .findByIdAndDelete(id);
+
 }
 
 
@@ -184,10 +253,14 @@ export async function excluirLoja(id: string) {
 // VERIFICAR SE LOJA EXISTE
 // ======================================================
 
-export async function lojaExiste(id: string) {
+export async function lojaExiste(
+  id: string
+) {
+
   return await LojaModel.exists({
     _id: id
   });
+
 }
 
 
@@ -198,16 +271,38 @@ export async function lojaExiste(id: string) {
 export async function proprietarioJaPossuiLoja(
   proprietarioId: string
 ) {
+
   return await LojaModel.exists({
-    proprietarioId: new Types.ObjectId(proprietarioId)
+
+    proprietarioId:
+      new Types.ObjectId(
+        proprietarioId
+      )
+
   });
+
 }
 
-export async function buscarLojaDoUsuario(id: string) {
-  return await LojaModel.findOne({
-    proprietarioId: new Types.ObjectId(id)
-  }).populate(
-    'proprietarioId',
-    'nome email perfil'
-  );
+
+// ======================================================
+// BUSCAR LOJA DO USUÁRIO
+// ======================================================
+
+export async function buscarLojaDoUsuario(
+  id: string
+) {
+
+  return await LojaModel
+    .findOne({
+
+      proprietarioId:
+        new Types.ObjectId(id)
+
+    })
+    .populate(
+      'proprietarioId',
+      'nome email perfil'
+    );
+
 }
+

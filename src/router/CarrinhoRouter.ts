@@ -1,37 +1,124 @@
+
 import { Router } from 'express';
 
 import {
+
   adicionarItem,
+
   buscarCarrinho,
+
   atualizarQuantidade,
+
   removerItem,
+
   limparCarrinho
+
 } from '../controller/CarrinhoController';
+
+import { autenticar } from '../middleware/AuthMiddleware';
+
+import { permitirPerfis } from '../middleware/RoleMiddleware';
+
+import { UserProfile } from '../model/usuario';
+
 
 const router = Router();
 
-// Adicionar produto ao carrinho
-router.post('/itens', adicionarItem);
 
-// Buscar carrinho do usuário
-router.get('/usuario/:usuarioId', buscarCarrinho);
+// =====================================================
+// ADICIONAR PRODUTO AO CARRINHO
+// =====================================================
 
-// Alterar quantidade de um produto
+router.post(
+
+  '/itens',
+
+  autenticar,
+
+  permitirPerfis(
+    UserProfile.Cliente
+  ),
+
+  adicionarItem
+
+);
+
+
+// =====================================================
+// BUSCAR MEU CARRINHO
+// =====================================================
+
+router.get(
+
+  '/',
+
+  autenticar,
+
+  permitirPerfis(
+    UserProfile.Cliente
+  ),
+
+  buscarCarrinho
+
+);
+
+
+// =====================================================
+// ALTERAR QUANTIDADE
+// =====================================================
+
 router.patch(
-  '/usuario/:usuarioId/itens/:produtoId',
+
+  '/itens/:produtoId',
+
+  autenticar,
+
+  permitirPerfis(
+    UserProfile.Cliente
+  ),
+
   atualizarQuantidade
+
 );
 
-// Remover produto
+
+// =====================================================
+// REMOVER PRODUTO
+// =====================================================
+
 router.delete(
-  '/usuario/:usuarioId/itens/:produtoId',
+
+  '/itens/:produtoId',
+
+  autenticar,
+
+  permitirPerfis(
+    UserProfile.Cliente
+  ),
+
   removerItem
+
 );
 
-// Limpar carrinho
+
+// =====================================================
+// LIMPAR CARRINHO
+// =====================================================
+
 router.delete(
-  '/usuario/:usuarioId',
+
+  '/',
+
+  autenticar,
+
+  permitirPerfis(
+    UserProfile.Cliente
+  ),
+
   limparCarrinho
+
 );
+
 
 export default router;
+

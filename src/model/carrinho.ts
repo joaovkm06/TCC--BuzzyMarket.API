@@ -1,80 +1,120 @@
 
-import { model, Schema } from 'mongoose';
+import {
+  model,
+  Schema,
+  Types,
+  Document
+} from 'mongoose';
+
+
+// =====================================================
+// ITEM DO CARRINHO
+// =====================================================
 
 export interface ItemCarrinho {
-  produtoId: string;
+  produtoId: Types.ObjectId;
   nome: string;
   preco: number;
   imagem?: string;
   quantidade: number;
 }
 
-export interface Carrinho {
-  id: string;
-  usuarioId: string;
+
+// =====================================================
+// CARRINHO
+// =====================================================
+
+export interface Carrinho extends Document {
+  usuarioId: Types.ObjectId;
   itens: ItemCarrinho[];
   atualizadoEm: Date;
 }
 
-const itemCarrinhoSchema = new Schema(
-  {
-    produtoId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Produto',
-      required: true
+
+// =====================================================
+// SCHEMA DO ITEM
+// =====================================================
+
+const itemCarrinhoSchema =
+  new Schema<ItemCarrinho>(
+    {
+
+      produtoId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Produto',
+        required: true
+      },
+
+      nome: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      preco: {
+        type: Number,
+        required: true,
+        min: 0
+      },
+
+      imagem: {
+        type: String,
+        required: false,
+        trim: true
+      },
+
+      quantidade: {
+        type: Number,
+        required: true,
+        min: 1
+      }
+
     },
 
-    nome: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    preco: {
-      type: Number,
-      required: true,
-      min: 0
-    },
-
-    imagem: {
-      type: String,
-      trim: true
-    },
-
-    quantidade: {
-      type: Number,
-      required: true,
-      min: 1
+    {
+      _id: false
     }
-  },
-  {
-    _id: false
-  }
-);
+  );
 
-const carrinhoSchema = new Schema(
-  {
-    usuarioId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      unique: true
+
+// =====================================================
+// SCHEMA DO CARRINHO
+// =====================================================
+
+const carrinhoSchema =
+  new Schema<Carrinho>(
+    {
+
+      usuarioId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        unique: true
+      },
+
+      itens: {
+        type: [itemCarrinhoSchema],
+        default: []
+      }
+
     },
 
-    itens: {
-      type: [itemCarrinhoSchema],
-      default: []
+    {
+      timestamps: {
+        createdAt: false,
+        updatedAt: 'atualizadoEm'
+      }
     }
-  },
-  {
-    timestamps: {
-      createdAt: false,
-      updatedAt: 'atualizadoEm'
-    }
-  }
-);
+  );
 
-export const CarrinhoModel = model<Carrinho>(
-  'Carrinho',
-  carrinhoSchema
-);
+
+// =====================================================
+// MODEL
+// =====================================================
+
+export const CarrinhoModel =
+  model<Carrinho>(
+    'Carrinho',
+    carrinhoSchema
+  );
+

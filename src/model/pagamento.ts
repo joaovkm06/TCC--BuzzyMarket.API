@@ -1,9 +1,20 @@
-import { model, Schema } from 'mongoose';
+
+import { model, Schema, Types, Document } from 'mongoose';
+
+
+// ======================================================
+// MÉTODOS DE PAGAMENTO
+// ======================================================
 
 export type MetodoPagamento =
   | 'pix'
   | 'cartao'
   | 'boleto';
+
+
+// ======================================================
+// STATUS DO PAGAMENTO
+// ======================================================
 
 export type StatusPagamento =
   | 'pendente'
@@ -11,9 +22,13 @@ export type StatusPagamento =
   | 'recusado'
   | 'cancelado';
 
-export interface Pagamento {
-  id: string;
-  pedidoId: string;
+
+// ======================================================
+// INTERFACE
+// ======================================================
+
+export interface Pagamento extends Document {
+  pedidoId: Types.ObjectId;
   valor: number;
   metodo: MetodoPagamento;
   status: StatusPagamento;
@@ -21,7 +36,12 @@ export interface Pagamento {
   criadoEm: Date;
 }
 
-const pagamentoSchema = new Schema(
+
+// ======================================================
+// SCHEMA
+// ======================================================
+
+const pagamentoSchema = new Schema<Pagamento>(
   {
     pedidoId: {
       type: Schema.Types.ObjectId,
@@ -38,7 +58,11 @@ const pagamentoSchema = new Schema(
 
     metodo: {
       type: String,
-      enum: ['pix', 'cartao', 'boleto'],
+      enum: [
+        'pix',
+        'cartao',
+        'boleto'
+      ],
       required: true
     },
 
@@ -55,7 +79,9 @@ const pagamentoSchema = new Schema(
     },
 
     transacaoId: {
-      type: String
+      type: String,
+      required: false,
+      trim: true
     }
   },
   {
@@ -66,7 +92,14 @@ const pagamentoSchema = new Schema(
   }
 );
 
-export const PagamentoModel = model<Pagamento>(
-  'Pagamento',
-  pagamentoSchema
-);
+
+// ======================================================
+// MODEL
+// ======================================================
+
+export const PagamentoModel =
+  model<Pagamento>(
+    'Pagamento',
+    pagamentoSchema
+  );
+

@@ -1,15 +1,29 @@
-import { Request, Response } from 'express';
+
+import { Response } from 'express';
+import { AuthRequest } from '../types/AuthRequest';
 import * as pedidoService from '../service/PedidoService';
 
+
+// ======================================================
+// CRIAR PEDIDO
+// ======================================================
+
 export async function criarPedido(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
 
+    // O usuário autenticado é o dono do pedido.
+    // Não confiamos no usuarioId enviado pelo body.
+    const dadosPedido = {
+      ...req.body,
+      usuarioId: req.usuario!.id
+    };
+
     const pedido =
       await pedidoService.criarPedido(
-        req.body
+        dadosPedido
       );
 
     return res.status(201).json({
@@ -30,10 +44,12 @@ export async function criarPedido(
       mensagem:
         error.message ||
         'Não foi possível criar o pedido.',
+
       ...(error.estoqueDisponivel !== undefined && {
         estoqueDisponivel:
           error.estoqueDisponivel
       }),
+
       ...(error.quantidadeSolicitada !== undefined && {
         quantidadeSolicitada:
           error.quantidadeSolicitada
@@ -48,7 +64,7 @@ export async function criarPedido(
 // ======================================================
 
 export async function listarPedidos(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
@@ -80,20 +96,110 @@ export async function listarPedidos(
 // BUSCAR POR ID
 // ======================================================
 
+
 export async function buscarPedidoPorId(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
 
+    const pedidoId =
+      String(req.params.id);
+
     const pedido =
       await pedidoService.buscarPedidoPorId(
-        String(req.params.id)
+        pedidoId
       );
 
-    return res.status(200).json(
-      pedido
-    );
+    if (!pedido) {
+
+      return res.status(404).json({
+        mensagem: 'Pedido não encontrado.'
+      });
+
+    }
+
+    // ==================================================
+    // ADMIN
+    // ==================================================
+
+    // Admin pode visualizar qualquer pedido.
+    if (req.usuario!.perfil === 'admin') {
+
+      return res.status(200).json(
+        pedido
+      );
+    }
+
+
+    // ==================================================
+    // CLIENTE
+    // ==================================================
+
+    if (req.usuario!.perfil === 'cliente') {
+
+      const usuarioId =
+        pedido.usuarioId?._id
+          ? pedido.usuarioId._id.toString()
+          : pedido.usuarioId.toString();
+
+      if (
+        usuarioId !== req.usuario!.id
+      ) {
+
+        return res.status(403).json({
+          mensagem:
+            'Você não tem permissão para visualizar este pedido.'
+        });
+
+      }
+
+      return res.status(200).json(
+        pedido
+      );
+    }
+
+
+    // ==================================================
+    // LOJISTA / FUNCIONÁRIO
+    // ==================================================
+
+    if (
+      req.usuario!.perfil === 'logista' ||
+      req.usuario!.perfil === 'funcionario'
+    ) {
+
+      const lojaId =
+        pedido.lojaId?._id
+          ? pedido.lojaId._id.toString()
+          : pedido.lojaId.toString();
+
+      if (
+        !req.usuario!.lojaId ||
+        req.usuario!.lojaId !== lojaId
+      ) {
+
+        return res.status(403).json({
+          mensagem:
+            'Você não tem permissão para visualizar este pedido.'
+        });
+
+      }
+
+      return res.status(200).json(
+        pedido
+      );
+    }
+
+
+    // ==================================================
+    // PERFIL NÃO AUTORIZADO
+    // ==================================================
+
+    return res.status(403).json({
+      mensagem:
+        'Você não tem permissão para visualizar este pedido.'
+    });
 
   } catch (error: any) {
 
@@ -113,19 +219,37 @@ export async function buscarPedidoPorId(
 }
 
 
+
 // ======================================================
 // LISTAR POR USUÁRIO
 // ======================================================
 
 export async function listarPedidosPorUsuario(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
 
+    const usuarioId =
+      String(req.params.usuarioId);
+
+    // Cliente só pode consultar
+    // os próprios pedidos.
+    if (
+      req.usuario!.perfil === 'cliente' &&
+      req.usuario!.id !== usuarioId
+    ) {
+
+      return res.status(403).json({
+        mensagem:
+          'Você não tem permissão para consultar os pedidos de outro usuário.'
+      });
+
+    }
+
     const resultado =
       await pedidoService.listarPedidosPorUsuario(
-        String(req.params.usuarioId)
+        usuarioId
       );
 
     return res.status(200).json(
@@ -155,14 +279,35 @@ export async function listarPedidosPorUsuario(
 // ======================================================
 
 export async function listarPedidosPorLoja(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
 
+    const lojaId =
+      String(req.params.lojaId);
+
+    // Admin pode consultar qualquer loja.
+    if (req.usuario!.perfil !== 'admin') {
+
+      // Lojista e funcionário só podem
+      // consultar a loja à qual pertencem.
+      if (
+        !req.usuario!.lojaId ||
+        req.usuario!.lojaId !== lojaId
+      ) {
+
+        return res.status(403).json({
+          mensagem:
+            'Você não tem permissão para consultar os pedidos desta loja.'
+        });
+
+      }
+    }
+
     const resultado =
       await pedidoService.listarPedidosPorLoja(
-        String(req.params.lojaId)
+        lojaId
       );
 
     return res.status(200).json(
@@ -192,21 +337,62 @@ export async function listarPedidosPorLoja(
 // ======================================================
 
 export async function atualizarStatusPedido(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
 
+    const pedidoId =
+      String(req.params.id);
+
+    // Busca o pedido antes de alterar
+    // para verificar a loja.
     const pedido =
+      await pedidoService.buscarPedidoPorId(
+        pedidoId
+      );
+
+    if (!pedido) {
+
+      return res.status(404).json({
+        mensagem: 'Pedido não encontrado.'
+      });
+
+    }
+
+    // Admin pode alterar qualquer pedido.
+    if (req.usuario!.perfil !== 'admin') {
+
+      const lojaId =
+        pedido.lojaId?._id
+          ? pedido.lojaId._id.toString()
+          : pedido.lojaId.toString();
+
+      // Lojista e funcionário precisam
+      // pertencer à loja do pedido.
+      if (
+        !req.usuario!.lojaId ||
+        req.usuario!.lojaId !== lojaId
+      ) {
+
+        return res.status(403).json({
+          mensagem:
+            'Você não tem permissão para alterar este pedido.'
+        });
+
+      }
+    }
+
+    const pedidoAtualizado =
       await pedidoService.atualizarStatusPedido(
-        String(req.params.id),
+        pedidoId,
         req.body.status
       );
 
     return res.status(200).json({
       mensagem:
         'Status do pedido atualizado com sucesso.',
-      pedido
+      pedido: pedidoAtualizado
     });
 
   } catch (error: any) {
@@ -222,6 +408,7 @@ export async function atualizarStatusPedido(
       mensagem:
         error.message ||
         'Não foi possível atualizar o status do pedido.',
+
       ...(error.statusPermitidos && {
         statusPermitidos:
           error.statusPermitidos
@@ -232,24 +419,103 @@ export async function atualizarStatusPedido(
 
 
 // ======================================================
-// CANCELAR
+// CANCELAR PEDIDO
 // ======================================================
 
 export async function cancelarPedido(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
 
+    const pedidoId =
+      String(req.params.id);
+
+    // Busca o pedido para verificar
+    // quem pode cancelar.
     const pedido =
+      await pedidoService.buscarPedidoPorId(
+        pedidoId
+      );
+
+    if (!pedido) {
+
+      return res.status(404).json({
+        mensagem: 'Pedido não encontrado.'
+      });
+
+    }
+
+
+    // ==================================================
+    // CLIENTE
+    // ==================================================
+
+    if (
+      req.usuario!.perfil === 'cliente'
+    ) {
+
+      const usuarioId =
+        pedido.usuarioId?._id
+          ? pedido.usuarioId._id.toString()
+          : pedido.usuarioId.toString();
+
+      if (
+        usuarioId !== req.usuario!.id
+      ) {
+
+        return res.status(403).json({
+          mensagem:
+            'Você não tem permissão para cancelar este pedido.'
+        });
+
+      }
+    }
+
+
+    // ==================================================
+    // LOJISTA
+    // ==================================================
+
+    if (
+      req.usuario!.perfil === 'logista'
+    ) {
+
+      const lojaId =
+        pedido.lojaId?._id
+          ? pedido.lojaId._id.toString()
+          : pedido.lojaId.toString();
+
+      if (
+        !req.usuario!.lojaId ||
+        req.usuario!.lojaId !== lojaId
+      ) {
+
+        return res.status(403).json({
+          mensagem:
+            'Você não tem permissão para cancelar este pedido.'
+        });
+
+      }
+    }
+
+
+    // ==================================================
+    // ADMIN
+    // ==================================================
+
+    // Admin pode cancelar qualquer pedido.
+
+
+    const pedidoCancelado =
       await pedidoService.cancelarPedido(
-        String(req.params.id)
+        pedidoId
       );
 
     return res.status(200).json({
       mensagem:
         'Pedido cancelado com sucesso.',
-      pedido
+      pedido: pedidoCancelado
     });
 
   } catch (error: any) {
@@ -268,3 +534,5 @@ export async function cancelarPedido(
     });
   }
 }
+
+

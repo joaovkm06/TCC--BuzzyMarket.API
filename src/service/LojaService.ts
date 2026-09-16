@@ -1,11 +1,64 @@
-import { UserProfile } from '../model/usuario';
-import { StatusLoja } from '../model/loja';
 
-import * as lojaRepository from '../repository/LojaRepository';
-import * as userRepository from '../repository/UserRepository';
+import { Types } from 'mongoose';
+
+import {
+  UserProfile
+} from '../model/usuario';
+
+import {
+  StatusLoja
+} from '../model/loja';
+
+import * as lojaRepository
+  from '../repository/LojaRepository';
+
+import * as userRepository
+  from '../repository/UserRepository';
 
 
-export async function criarLoja(dados: any) {
+// ======================================================
+// ERRO PADRÃO
+// ======================================================
+
+function erro(
+  mensagem: string,
+  status = 400
+) {
+
+  const error: any =
+    new Error(mensagem);
+
+  error.status = status;
+
+  return error;
+}
+
+
+// ======================================================
+// CRIAR LOJA
+// ======================================================
+
+export async function criarLoja(
+  dados: any,
+  proprietarioId: string
+) {
+
+  // ====================================================
+  // VALIDAR ID
+  // ====================================================
+
+  if (
+    !Types.ObjectId.isValid(
+      proprietarioId
+    )
+  ) {
+
+    throw erro(
+      'ID do proprietário inválido.'
+    );
+
+  }
+
 
   const {
     nome,
@@ -15,36 +68,31 @@ export async function criarLoja(dados: any) {
     banner,
     telefone,
     endereco,
-    proprietarioId,
     horarios
   } = dados;
 
 
-  // ==============================
-  // VALIDAÇÕES
-  // ==============================
+  // ====================================================
+  // VALIDAÇÕES BÁSICAS
+  // ====================================================
 
   if (
     !nome ||
     !categoria ||
     !telefone ||
-    !endereco ||
-    !proprietarioId
+    !endereco
   ) {
 
-    const erro: any = new Error(
-      'Nome, categoria, telefone, endereco e proprietarioId são obrigatórios.'
+    throw erro(
+      'Nome, categoria, telefone e endereco são obrigatórios.'
     );
 
-    erro.status = 400;
-
-    throw erro;
   }
 
 
-  // ==============================
+  // ====================================================
   // VALIDAÇÃO DO ENDEREÇO
-  // ==============================
+  // ====================================================
 
   if (
     !endereco.cep ||
@@ -55,161 +103,269 @@ export async function criarLoja(dados: any) {
     !endereco.estado
   ) {
 
-    const erro: any = new Error(
+    throw erro(
       'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço.'
     );
 
-    erro.status = 400;
-
-    throw erro;
   }
 
 
-  // ==============================
+  // ====================================================
   // VERIFICA PROPRIETÁRIO
-  // ==============================
+  // ====================================================
 
   const proprietario =
-    await userRepository.buscarUsuarioSemPopulate(proprietarioId);
+    await userRepository
+      .buscarUsuarioSemPopulate(
+        proprietarioId
+      );
+
 
   if (!proprietario) {
 
-    const erro: any = new Error(
-      'Proprietário não encontrado.'
+    throw erro(
+      'Proprietário não encontrado.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
-  // ==============================
+  // ====================================================
   // SOMENTE LOGISTA
-  // ==============================
+  // ====================================================
 
-  if (proprietario.perfil !== UserProfile.Logista) {
+  if (
+    proprietario.perfil !==
+    UserProfile.Logista
+  ) {
 
-    const erro: any = new Error(
-      'Somente usuários com perfil logista podem ser proprietários de uma loja.'
+    throw erro(
+      'Somente usuários com perfil logista podem ser proprietários de uma loja.',
+      403
     );
 
-    erro.status = 400;
-
-    throw erro;
   }
 
 
-  // ==============================
+  // ====================================================
   // VERIFICA SE JÁ POSSUI LOJA
-  // ==============================
+  // ====================================================
 
   const lojaExistente =
-    await lojaRepository.buscarLojaDoProprietario(
-      proprietarioId
-    );
+    await lojaRepository
+      .buscarLojaDoProprietario(
+        proprietarioId
+      );
+
 
   if (lojaExistente) {
 
-    const erro: any = new Error(
+    throw erro(
       'Este usuário já possui uma loja.'
     );
 
-    erro.status = 400;
-
-    throw erro;
   }
 
 
-  // ==============================
+  // ====================================================
+  // VERIFICA VÍNCULO NO USUÁRIO
+  // ====================================================
+
+  if (proprietario.lojaId) {
+
+    throw erro(
+      'Este usuário já possui uma loja vinculada.'
+    );
+
+  }
+
+
+  // ====================================================
   // CRIA LOJA
-  // ==============================
+  // ====================================================
 
-  const loja = await lojaRepository.criarLoja({
-    nome,
-    descricao,
-    categoria,
-    foto,
-    banner,
-    telefone,
-    endereco,
-    proprietarioId,
-    horarios: horarios || {}
-  });
+  const loja =
+    await lojaRepository.criarLoja({
+
+      nome: nome.trim(),
+
+      descricao:
+        descricao?.trim(),
+
+      categoria:
+        categoria.trim(),
+
+      foto:
+        foto?.trim(),
+
+      banner:
+        banner?.trim(),
+
+      telefone:
+        telefone.trim(),
+
+      endereco,
+
+      proprietarioId:
+        new Types.ObjectId(
+          proprietarioId
+        ),
+
+      status: 'pendente',
+
+      horarios:
+        horarios || {}
+
+    });
 
 
-  // ==============================
+  // ====================================================
   // VINCULA LOJA AO USUÁRIO
-  // ==============================
+  // ====================================================
 
-  await userRepository.atualizarUsuario(
-    proprietarioId,
-    {
-      lojaId: loja._id
-    }
-  );
+  await userRepository
+    .atualizarUsuario(
+
+      proprietarioId,
+
+      {
+        lojaId: loja._id
+      }
+
+    );
 
 
   return loja;
 }
 
 
-// ==========================================
+// ======================================================
 // LISTAR LOJAS
-// ==========================================
+// ======================================================
 
 export async function listarLojas() {
 
-  return await lojaRepository.listarLojas();
+  return await lojaRepository
+    .listarLojas();
 
 }
 
 
-// ==========================================
+// ======================================================
 // BUSCAR LOJA POR ID
-// ==========================================
+// ======================================================
 
-export async function buscarLojaPorId(id: string) {
+export async function buscarLojaPorId(
+  id: string
+) {
+
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
+
+    throw erro(
+      'ID da loja inválido.'
+    );
+
+  }
+
 
   const loja =
-    await lojaRepository.buscarLojaPorId(id);
+    await lojaRepository
+      .buscarLojaPorId(id);
+
 
   if (!loja) {
 
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw erro(
+      'Loja não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
+
 
   return loja;
 }
 
 
-// ==========================================
+// ======================================================
+// BUSCAR LOJA DO PROPRIETÁRIO
+// ======================================================
+
+export async function buscarLojaDoProprietario(
+  proprietarioId: string
+) {
+
+  if (
+    !Types.ObjectId.isValid(
+      proprietarioId
+    )
+  ) {
+
+    throw erro(
+      'ID do proprietário inválido.'
+    );
+
+  }
+
+
+  const loja =
+    await lojaRepository
+      .buscarLojaDoProprietario(
+        proprietarioId
+      );
+
+
+  if (!loja) {
+
+    throw erro(
+      'O usuário não possui uma loja.',
+      404
+    );
+
+  }
+
+
+  return loja;
+}
+
+
+// ======================================================
 // ATUALIZAR LOJA
-// ==========================================
+// ======================================================
 
 export async function atualizarLoja(
   id: string,
   dados: any
 ) {
 
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
+
+    throw erro(
+      'ID da loja inválido.'
+    );
+
+  }
+
+
   const loja =
-    await lojaRepository.buscarLojaPorIdSemPopulate(id);
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        id
+      );
+
 
   if (!loja) {
 
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw erro(
+      'Loja não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -224,42 +380,166 @@ export async function atualizarLoja(
   } = dados;
 
 
-  // ==============================
-  // ATUALIZA CAMPOS
-  // ==============================
+  // ====================================================
+  // NOME
+  // ====================================================
 
-  if (nome !== undefined) {
-    loja.nome = nome;
-  }
-
-  if (descricao !== undefined) {
-    loja.descricao = descricao;
-  }
-
-  if (categoria !== undefined) {
-    loja.categoria = categoria;
-  }
-
-  if (foto !== undefined) {
-    loja.foto = foto;
-  }
-
-  if (banner !== undefined) {
-    loja.banner = banner;
-  }
-
-  if (telefone !== undefined) {
-    loja.telefone = telefone;
-  }
-
-
-  // ==============================
-  // ENDEREÇO
-  // ==============================
-
-  if (endereco !== undefined) {
+  if (
+    nome !== undefined
+  ) {
 
     if (
+      typeof nome !== 'string' ||
+      !nome.trim()
+    ) {
+
+      throw erro(
+        'O nome da loja não pode ser vazio.'
+      );
+
+    }
+
+    loja.nome =
+      nome.trim();
+
+  }
+
+
+  // ====================================================
+  // DESCRIÇÃO
+  // ====================================================
+
+  if (
+    descricao !== undefined
+  ) {
+
+    if (
+      descricao !== null &&
+      typeof descricao !== 'string'
+    ) {
+
+      throw erro(
+        'A descrição deve ser um texto.'
+      );
+
+    }
+
+    loja.descricao =
+      descricao?.trim();
+
+  }
+
+
+  // ====================================================
+  // CATEGORIA
+  // ====================================================
+
+  if (
+    categoria !== undefined
+  ) {
+
+    if (
+      typeof categoria !== 'string' ||
+      !categoria.trim()
+    ) {
+
+      throw erro(
+        'A categoria da loja não pode ser vazia.'
+      );
+
+    }
+
+    loja.categoria =
+      categoria.trim();
+
+  }
+
+
+  // ====================================================
+  // FOTO
+  // ====================================================
+
+  if (
+    foto !== undefined
+  ) {
+
+    if (
+      foto !== null &&
+      typeof foto !== 'string'
+    ) {
+
+      throw erro(
+        'A foto deve ser um texto.'
+      );
+
+    }
+
+    loja.foto =
+      foto?.trim();
+
+  }
+
+
+  // ====================================================
+  // BANNER
+  // ====================================================
+
+  if (
+    banner !== undefined
+  ) {
+
+    if (
+      banner !== null &&
+      typeof banner !== 'string'
+    ) {
+
+      throw erro(
+        'O banner deve ser um texto.'
+      );
+
+    }
+
+    loja.banner =
+      banner?.trim();
+
+  }
+
+
+  // ====================================================
+  // TELEFONE
+  // ====================================================
+
+  if (
+    telefone !== undefined
+  ) {
+
+    if (
+      typeof telefone !== 'string' ||
+      !telefone.trim()
+    ) {
+
+      throw erro(
+        'O telefone da loja não pode ser vazio.'
+      );
+
+    }
+
+    loja.telefone =
+      telefone.trim();
+
+  }
+
+
+  // ====================================================
+  // ENDEREÇO
+  // ====================================================
+
+  if (
+    endereco !== undefined
+  ) {
+
+    if (
+      !endereco ||
       !endereco.cep ||
       !endereco.logradouro ||
       !endereco.numero ||
@@ -268,173 +548,259 @@ export async function atualizarLoja(
       !endereco.estado
     ) {
 
-      const erro: any = new Error(
+      throw erro(
         'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço.'
       );
 
-      erro.status = 400;
-
-      throw erro;
     }
 
-    loja.endereco = endereco;
+    loja.endereco =
+      endereco;
+
   }
 
 
+  // ====================================================
+  // SALVAR
+  // ====================================================
+
   await loja.save();
+
 
   return loja;
 }
 
 
-// ==========================================
+// ======================================================
 // ATUALIZAR HORÁRIOS
-// ==========================================
+// ======================================================
 
 export async function atualizarHorarios(
   id: string,
   horarios: any
 ) {
 
-  if (!horarios || typeof horarios !== 'object') {
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
 
-    const erro: any = new Error(
+    throw erro(
+      'ID da loja inválido.'
+    );
+
+  }
+
+
+  if (
+    !horarios ||
+    typeof horarios !== 'object' ||
+    Array.isArray(horarios)
+  ) {
+
+    throw erro(
       'Informe os horários da loja.'
     );
 
-    erro.status = 400;
-
-    throw erro;
   }
 
 
   const loja =
-    await lojaRepository.buscarLojaPorIdSemPopulate(id);
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        id
+      );
+
 
   if (!loja) {
 
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw erro(
+      'Loja não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
-  loja.horarios = horarios;
+  loja.horarios =
+    horarios;
+
 
   await loja.save();
+
 
   return loja;
 }
 
 
-// ==========================================
+// ======================================================
 // ATUALIZAR STATUS
-// ==========================================
+// ======================================================
 
 export async function atualizarStatusLoja(
   id: string,
   status: StatusLoja
 ) {
 
-  const statusPermitidos: StatusLoja[] = [
-    'pendente',
-    'aprovada',
-    'rejeitada',
-    'bloqueada'
-  ];
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
+
+    throw erro(
+      'ID da loja inválido.'
+    );
+
+  }
 
 
-  if (!statusPermitidos.includes(status)) {
+  const statusPermitidos:
+    StatusLoja[] = [
 
-    const erro: any = new Error(
+      'pendente',
+
+      'aprovada',
+
+      'rejeitada',
+
+      'bloqueada'
+
+    ];
+
+
+  if (
+    !statusPermitidos.includes(
+      status
+    )
+  ) {
+
+    throw erro(
       'Status inválido.'
     );
 
-    erro.status = 400;
-
-    throw erro;
   }
 
 
   const loja =
-    await lojaRepository.buscarLojaPorIdSemPopulate(id);
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        id
+      );
+
 
   if (!loja) {
 
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw erro(
+      'Loja não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
-  loja.status = status;
+  loja.status =
+    status;
+
 
   await loja.save();
+
 
   return loja;
 }
 
 
-// ==========================================
+// ======================================================
 // VERIFICAR SE A LOJA ESTÁ ABERTA
-// ==========================================
+// ======================================================
 
 export async function verificarLojaAberta(
   id: string
 ) {
 
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
+
+    throw erro(
+      'ID da loja inválido.'
+    );
+
+  }
+
+
   const loja =
-    await lojaRepository.buscarLojaPorIdSemPopulate(id);
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        id
+      );
+
 
   if (!loja) {
 
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw erro(
+      'Loja não encontrada.',
+      404
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
-  // Loja não aprovada não funciona
+  // ====================================================
+  // LOJA NÃO APROVADA
+  // ====================================================
 
-  if (loja.status !== 'aprovada') {
+  if (
+    loja.status !== 'aprovada'
+  ) {
 
     return {
+
       aberta: false,
-      motivo: `Loja está ${loja.status}.`
+
+      motivo:
+        `Loja está ${loja.status}.`
+
     };
+
   }
 
 
-  const agora = new Date();
+  // ====================================================
+  // DATA E HORA ATUAL
+  // ====================================================
 
-  const diaSemana = agora.getDay();
+  const agora =
+    new Date();
+
+
+  const diaSemana =
+    agora.getDay();
 
 
   const dias = [
+
     'domingo',
+
     'segunda',
+
     'terca',
+
     'quarta',
+
     'quinta',
+
     'sexta',
+
     'sabado'
+
   ];
 
 
-  const diaAtual = dias[diaSemana];
+  const diaAtual =
+    dias[diaSemana];
 
+
+  // ====================================================
+  // HORÁRIO DO DIA
+  // ====================================================
 
   const horario =
     loja.horarios?.[
@@ -442,80 +808,132 @@ export async function verificarLojaAberta(
     ];
 
 
-  // Não possui horário
-
   if (!horario) {
 
     return {
+
       aberta: false,
+
       dia: diaAtual,
-      mensagem: 'A loja está fechada hoje.'
+
+      mensagem:
+        'A loja está fechada hoje.'
+
     };
+
   }
 
 
+  // ====================================================
+  // HORA ATUAL
+  // ====================================================
+
   const horaAtual =
-    agora.getHours()
+
+    agora
+      .getHours()
       .toString()
-      .padStart(2, '0') +
-    ':' +
-    agora.getMinutes()
+      .padStart(2, '0')
+
+    + ':' +
+
+    agora
+      .getMinutes()
       .toString()
       .padStart(2, '0');
 
 
+  // ====================================================
+  // VERIFICA ABERTURA
+  // ====================================================
+
   const aberta =
-    horaAtual >= horario.abertura &&
-    horaAtual < horario.fechamento;
+
+    horaAtual >=
+      horario.abertura &&
+
+    horaAtual <
+      horario.fechamento;
 
 
   return {
+
     aberta,
+
     dia: diaAtual,
+
     horario,
+
     horaAtual
+
   };
 }
 
 
-// ==========================================
+// ======================================================
 // EXCLUIR LOJA
-// ==========================================
+// ======================================================
 
-export async function excluirLoja(id: string) {
+export async function excluirLoja(
+  id: string
+) {
 
-  const loja =
-    await lojaRepository.buscarLojaPorIdSemPopulate(id);
+  if (
+    !Types.ObjectId.isValid(id)
+  ) {
 
-  if (!loja) {
-
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw erro(
+      'ID da loja inválido.'
     );
 
-    erro.status = 404;
-
-    throw erro;
   }
 
 
-  // Remove loja do proprietário
-
-  await userRepository.removerLojaDoUsuario(
-    loja.proprietarioId.toString()
-  );
-
-
-  // Remove loja dos funcionários
-
-  await userRepository.removerLojaDosFuncionarios(
-    id
-  );
+  const loja =
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        id
+      );
 
 
-  // Exclui loja
+  if (!loja) {
 
-  await lojaRepository.excluirLoja(id);
+    throw erro(
+      'Loja não encontrada.',
+      404
+    );
+
+  }
+
+
+  // ====================================================
+  // REMOVE LOJA DO PROPRIETÁRIO
+  // ====================================================
+
+  await userRepository
+    .removerLojaDoUsuario(
+      loja.proprietarioId.toString()
+    );
+
+
+  // ====================================================
+  // REMOVE LOJA DOS FUNCIONÁRIOS
+  // ====================================================
+
+  await userRepository
+    .removerLojaDosFuncionarios(
+      id
+    );
+
+
+  // ====================================================
+  // EXCLUI LOJA
+  // ====================================================
+
+  await lojaRepository
+    .excluirLoja(id);
+
 
   return true;
 }
+

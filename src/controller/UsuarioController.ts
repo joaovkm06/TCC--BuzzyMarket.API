@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 
 import * as userService from '../service/UserService';
 import { UserProfile } from '../model/usuario';
-
+import { AuthRequest } from '../types/AuthRequest';
 
 // ======================================================
 // POST /users
@@ -257,23 +257,92 @@ export async function buscarUsuario(
   }
 }
 
-
-// ======================================================
-// PUT /users/:id
-// ATUALIZAR USUÁRIO
-// ======================================================
-
 export async function atualizarUsuario(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
   try {
 
+    if (!req.usuario) {
+      return res.status(401).json({
+        mensagem: 'Usuário não autenticado.'
+      });
+    }
+
+    const usuarioId = String(req.params.id);
+
+    const ehAdmin =
+      req.usuario.perfil === UserProfile.ADMIN;
+
+    const ehProprioUsuario =
+      String(req.usuario.id) === usuarioId;
+
+
+    // ================================================
+    // SEGURANÇA
+    // ================================================
+
+    if (!ehAdmin && !ehProprioUsuario) {
+      return res.status(403).json({
+        mensagem:
+          'Você só pode atualizar seu próprio usuário.'
+      });
+    }
+
+
+    // ================================================
+    // COPIA OS DADOS RECEBIDOS
+    // ================================================
+
+    const dadosAtualizacao = {
+      ...req.body
+    };
+
+
+    // ================================================
+    // NÃO-ADMIN NÃO PODE ALTERAR PERFIL
+    // NEM LOJA
+    // ================================================
+
+    if (!ehAdmin) {
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          dadosAtualizacao,
+          'perfil'
+        )
+      ) {
+        return res.status(403).json({
+          mensagem:
+            'Você não pode alterar o perfil do usuário.'
+        });
+      }
+
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          dadosAtualizacao,
+          'lojaId'
+        )
+      ) {
+        return res.status(403).json({
+          mensagem:
+            'Você não pode alterar a loja vinculada ao usuário.'
+        });
+      }
+    }
+
+
+    // ================================================
+    // ATUALIZA
+    // ================================================
+
     const usuario =
       await userService.atualizarUsuario(
-        String(req.params.id),
-        req.body
+        usuarioId,
+        dadosAtualizacao
       );
+
 
     if (!usuario) {
       return res.status(404).json({
@@ -281,6 +350,7 @@ export async function atualizarUsuario(
           'Usuário não encontrado.'
       });
     }
+
 
     return res.status(200).json({
       mensagem:
@@ -300,23 +370,107 @@ export async function atualizarUsuario(
     ).json({
       mensagem:
         error.message ||
-        'Não foi possível atualizar o usuário.',
-
-      ...(error.perfisPermitidos && {
-        perfisPermitidos:
-          error.perfisPermitidos
-      }),
-
-      ...(error.motivo && {
-        motivo: error.motivo
-      }),
-
-      ...(error.lojaId && {
-        lojaId: error.lojaId
-      })
+        'Não foi possível atualizar o usuário.'
     });
   }
 }
+
+
+// ======================================================
+// GET /users/funcionarios
+// LISTAR FUNCIONÁRIOS DA PRÓPRIA LOJA
+// LOJISTA OU ADMIN
+// ======================================================
+
+export async function listarFuncionariosDaLoja(
+  req: AuthRequest,
+  res: Response
+) {
+  try {
+    if (!req.usuario) {
+      return res.status(401).json({
+        mensagem: 'Usuário não autenticado.'
+      });
+    }
+
+    let lojaId: string | undefined;
+
+    // ==================================================
+    // LOJISTA
+    // ==================================================
+
+    if (req.usuario.perfil === UserProfile.Logista) {
+
+      if (!req.usuario.lojaId) {
+        return res.status(400).json({
+          mensagem:
+            'O lojista não possui uma loja vinculada.'
+        });
+      }
+
+      // O lojista SEMPRE consulta a própria loja.
+      lojaId = String(req.usuario.lojaId);
+    }
+
+    // ==================================================
+    // ADMIN
+    // ==================================================
+
+    else if (req.usuario.perfil === UserProfile.ADMIN) {
+
+      // Admin pode informar a loja pela query string.
+      lojaId = req.query.lojaId
+        ? String(req.query.lojaId)
+        : undefined;
+
+      if (!lojaId) {
+        return res.status(400).json({
+          mensagem:
+            'O administrador precisa informar o lojaId.'
+        });
+      }
+    }
+
+    // ==================================================
+    // OUTROS PERFIS
+    // ==================================================
+
+    else {
+      return res.status(403).json({
+        mensagem:
+          'Você não possui permissão para listar funcionários.'
+      });
+    }
+
+    const funcionarios =
+      await userService.listarFuncionariosDaLoja(
+        lojaId
+      );
+
+    return res.status(200).json({
+      lojaId,
+      quantidade: funcionarios.length,
+      funcionarios
+    });
+
+  } catch (error: any) {
+
+    console.error(
+      'Erro ao listar funcionários:',
+      error
+    );
+
+    return res.status(
+      error.status || 400
+    ).json({
+      mensagem:
+        error.message ||
+        'Não foi possível listar os funcionários.'
+    });
+  }
+}
+
+
 
 
 // ======================================================

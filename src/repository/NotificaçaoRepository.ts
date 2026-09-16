@@ -1,3 +1,6 @@
+
+import { Types } from 'mongoose';
+
 import { NotificacaoModel } from '../model/notificaçao';
 
 
@@ -5,8 +8,14 @@ import { NotificacaoModel } from '../model/notificaçao';
 // CRIAR NOTIFICAÇÃO
 // =====================================================
 
-export async function criarNotificacao(dados: any) {
-  return await NotificacaoModel.create(dados);
+export async function criarNotificacao(
+  dados: any
+) {
+
+  return await NotificacaoModel.create(
+    dados
+  );
+
 }
 
 
@@ -15,6 +24,7 @@ export async function criarNotificacao(dados: any) {
 // =====================================================
 
 export async function listarNotificacoes() {
+
   return await NotificacaoModel
     .find()
     .populate(
@@ -28,6 +38,7 @@ export async function listarNotificacoes() {
     .sort({
       criadoEm: -1
     });
+
 }
 
 
@@ -38,6 +49,7 @@ export async function listarNotificacoes() {
 export async function buscarNotificacaoPorId(
   id: string
 ) {
+
   return await NotificacaoModel
     .findById(id)
     .populate(
@@ -48,6 +60,7 @@ export async function buscarNotificacaoPorId(
       'remetenteId',
       'nome email perfil'
     );
+
 }
 
 
@@ -58,7 +71,10 @@ export async function buscarNotificacaoPorId(
 export async function buscarNotificacaoSemPopulate(
   id: string
 ) {
-  return await NotificacaoModel.findById(id);
+
+  return await NotificacaoModel
+    .findById(id);
+
 }
 
 
@@ -69,9 +85,12 @@ export async function buscarNotificacaoSemPopulate(
 export async function listarNotificacoesPorUsuario(
   usuarioId: string
 ) {
+
   return await NotificacaoModel
     .find({
-      usuarioId
+      usuarioId: new Types.ObjectId(
+        usuarioId
+      )
     })
     .populate(
       'remetenteId',
@@ -80,6 +99,7 @@ export async function listarNotificacoesPorUsuario(
     .sort({
       criadoEm: -1
     });
+
 }
 
 
@@ -91,6 +111,7 @@ export async function atualizarNotificacao(
   id: string,
   dados: any
 ) {
+
   return await NotificacaoModel
     .findByIdAndUpdate(
       id,
@@ -108,6 +129,7 @@ export async function atualizarNotificacao(
       'remetenteId',
       'nome email perfil'
     );
+
 }
 
 
@@ -118,9 +140,12 @@ export async function atualizarNotificacao(
 export async function marcarTodasComoLidas(
   usuarioId: string
 ) {
+
   return await NotificacaoModel.updateMany(
     {
-      usuarioId,
+      usuarioId: new Types.ObjectId(
+        usuarioId
+      ),
       lida: false
     },
     {
@@ -129,6 +154,7 @@ export async function marcarTodasComoLidas(
       }
     }
   );
+
 }
 
 
@@ -139,5 +165,9 @@ export async function marcarTodasComoLidas(
 export async function excluirNotificacao(
   id: string
 ) {
-  return await NotificacaoModel.findByIdAndDelete(id);
+
+  return await NotificacaoModel
+    .findByIdAndDelete(id);
+
 }
+

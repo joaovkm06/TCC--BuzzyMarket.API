@@ -1,135 +1,317 @@
-import { Request, Response } from 'express';
 
-import * as carrinhoService from '../service/CarrinhoService';
+import { Response } from 'express';
+
+import * as carrinhoService
+  from '../service/CarrinhoService';
+
+import { AuthRequest } from '../types/AuthRequest';
+
+
+// =====================================================
+// ADICIONAR ITEM
+// =====================================================
 
 export async function adicionarItem(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
+
   try {
-    const { usuarioId, produtoId, quantidade } = req.body;
+
+    const {
+      produtoId,
+      quantidade
+    } = req.body;
+
+
+    const usuarioId =
+      req.usuario!.id;
+
 
     const carrinho =
-      await carrinhoService.adicionarItem(
-        String(usuarioId),
-        String(produtoId),
-        Number(quantidade)
-      );
+      await carrinhoService
+        .adicionarItem(
+
+          usuarioId,
+
+          String(produtoId),
+
+          Number(quantidade)
+
+        );
+
 
     return res.status(200).json({
-      mensagem: 'Produto adicionado ao carrinho com sucesso.',
+
+      mensagem:
+        'Produto adicionado ao carrinho com sucesso.',
+
       carrinho
+
     });
+
 
   } catch (error: any) {
 
-    return res.status(error.status || 500).json({
+    console.error(
+      'Erro ao adicionar produto ao carrinho:',
+      error
+    );
+
+
+    return res.status(
+      error.status || 500
+    ).json({
+
       mensagem:
-        error.message || 'Erro ao adicionar produto ao carrinho.'
+        error.message ||
+        'Erro ao adicionar produto ao carrinho.'
+
     });
+
   }
+
 }
+
+
+// =====================================================
+// BUSCAR MEU CARRINHO
+// =====================================================
 
 export async function buscarCarrinho(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
+
   try {
-    const usuarioId = String(req.params.usuarioId);
+
+    const usuarioId =
+      req.usuario!.id;
+
 
     const carrinho =
-      await carrinhoService.buscarCarrinho(usuarioId);
+      await carrinhoService
+        .buscarCarrinho(
+          usuarioId
+        );
 
-    return res.status(200).json(carrinho);
+
+    return res.status(200).json(
+      carrinho
+    );
+
 
   } catch (error: any) {
 
-    return res.status(error.status || 500).json({
+    console.error(
+      'Erro ao buscar carrinho:',
+      error
+    );
+
+
+    return res.status(
+      error.status || 500
+    ).json({
+
       mensagem:
-        error.message || 'Erro ao buscar carrinho.'
+        error.message ||
+        'Erro ao buscar carrinho.'
+
     });
+
   }
+
 }
+
+
+// =====================================================
+// ATUALIZAR QUANTIDADE
+// =====================================================
 
 export async function atualizarQuantidade(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
+
   try {
-    const usuarioId = String(req.params.usuarioId);
-    const produtoId = String(req.params.produtoId);
 
-    const { quantidade } = req.body;
+    const usuarioId =
+      req.usuario!.id;
 
-    const carrinho =
-      await carrinhoService.atualizarQuantidade(
-        usuarioId,
-        produtoId,
-        Number(quantidade)
+
+    const produtoId =
+      String(
+        req.params.produtoId
       );
 
+
+    const {
+      quantidade
+    } = req.body;
+
+
+    const carrinho =
+      await carrinhoService
+        .atualizarQuantidade(
+
+          usuarioId,
+
+          produtoId,
+
+          Number(quantidade)
+
+        );
+
+
     return res.status(200).json({
-      mensagem: 'Quantidade atualizada com sucesso.',
+
+      mensagem:
+        'Quantidade atualizada com sucesso.',
+
       carrinho
+
     });
+
 
   } catch (error: any) {
 
-    return res.status(error.status || 500).json({
+    console.error(
+      'Erro ao atualizar quantidade:',
+      error
+    );
+
+
+    return res.status(
+      error.status || 500
+    ).json({
+
       mensagem:
-        error.message || 'Erro ao atualizar quantidade.'
+        error.message ||
+        'Erro ao atualizar quantidade.'
+
     });
+
   }
+
 }
+
+
+// =====================================================
+// REMOVER ITEM
+// =====================================================
 
 export async function removerItem(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
-  try {
-    const usuarioId = String(req.params.usuarioId);
-    const produtoId = String(req.params.produtoId);
 
-    const carrinho =
-      await carrinhoService.removerItem(
-        usuarioId,
-        produtoId
+  try {
+
+    const usuarioId =
+      req.usuario!.id;
+
+
+    const produtoId =
+      String(
+        req.params.produtoId
       );
 
-    return res.status(200).json({
-      mensagem: 'Produto removido do carrinho com sucesso.',
-      carrinho
-    });
-
-  } catch (error: any) {
-
-    return res.status(error.status || 500).json({
-      mensagem:
-        error.message || 'Erro ao remover produto do carrinho.'
-    });
-  }
-}
-
-export async function limparCarrinho(
-  req: Request,
-  res: Response
-) {
-  try {
-    const usuarioId = String(req.params.usuarioId);
 
     const carrinho =
-      await carrinhoService.limparCarrinho(usuarioId);
+      await carrinhoService
+        .removerItem(
+
+          usuarioId,
+
+          produtoId
+
+        );
+
 
     return res.status(200).json({
-      mensagem: 'Carrinho limpo com sucesso.',
+
+      mensagem:
+        'Produto removido do carrinho com sucesso.',
+
       carrinho
+
     });
+
 
   } catch (error: any) {
 
-    return res.status(error.status || 500).json({
+    console.error(
+      'Erro ao remover produto do carrinho:',
+      error
+    );
+
+
+    return res.status(
+      error.status || 500
+    ).json({
+
       mensagem:
-        error.message || 'Erro ao limpar carrinho.'
+        error.message ||
+        'Erro ao remover produto do carrinho.'
+
     });
+
   }
+
 }
+
+
+// =====================================================
+// LIMPAR CARRINHO
+// =====================================================
+
+export async function limparCarrinho(
+  req: AuthRequest,
+  res: Response
+) {
+
+  try {
+
+    const usuarioId =
+      req.usuario!.id;
+
+
+    const carrinho =
+      await carrinhoService
+        .limparCarrinho(
+          usuarioId
+        );
+
+
+    return res.status(200).json({
+
+      mensagem:
+        'Carrinho limpo com sucesso.',
+
+      carrinho
+
+    });
+
+
+  } catch (error: any) {
+
+    console.error(
+      'Erro ao limpar carrinho:',
+      error
+    );
+
+
+    return res.status(
+      error.status || 500
+    ).json({
+
+      mensagem:
+        error.message ||
+        'Erro ao limpar carrinho.'
+
+    });
+
+  }
+
+}
+

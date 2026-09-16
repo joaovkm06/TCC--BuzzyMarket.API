@@ -1,3 +1,5 @@
+
+import { Types } from 'mongoose';
 import { ProdutoModel } from '../model/produto';
 
 
@@ -8,7 +10,6 @@ import { ProdutoModel } from '../model/produto';
 export async function criarProduto(
   dados: any
 ) {
-
   return await ProdutoModel.create(dados);
 }
 
@@ -18,7 +19,6 @@ export async function criarProduto(
 // ==========================================
 
 export async function listarProdutos() {
-
   return await ProdutoModel
     .find()
     .populate(
@@ -38,7 +38,6 @@ export async function listarProdutos() {
 export async function buscarProdutoPorId(
   id: string
 ) {
-
   return await ProdutoModel
     .findById(id)
     .populate(
@@ -55,7 +54,6 @@ export async function buscarProdutoPorId(
 export async function buscarProdutoSemPopulate(
   id: string
 ) {
-
   return await ProdutoModel.findById(id);
 }
 
@@ -67,10 +65,9 @@ export async function buscarProdutoSemPopulate(
 export async function listarProdutosPorLoja(
   lojaId: string
 ) {
-
   return await ProdutoModel
     .find({
-      lojaId
+      lojaId: new Types.ObjectId(lojaId)
     })
     .populate(
       'lojaId',
@@ -90,7 +87,6 @@ export async function atualizarProduto(
   id: string,
   dados: any
 ) {
-
   return await ProdutoModel
     .findByIdAndUpdate(
       id,
@@ -104,8 +100,26 @@ export async function atualizarProduto(
       'lojaId',
       'nome categoria status'
     );
-}
+} 
 
+
+export async function alterarEstoque(
+  produtoId: string,
+  quantidade: number
+) {
+  return await ProdutoModel.findByIdAndUpdate(
+    produtoId,
+    {
+      $inc: {
+        estoque: quantidade
+      }
+    },
+    {
+      new: true,
+      runValidators: true
+    }
+  );
+}
 
 // ==========================================
 // EXCLUIR
@@ -114,6 +128,13 @@ export async function atualizarProduto(
 export async function excluirProduto(
   id: string
 ) {
-
   return await ProdutoModel.findByIdAndDelete(id);
 }
+
+
+export function atualizarEstoque(arg0: any, arg1: number) {
+  throw new Error('Function not implemented.');
+}
+
+
+

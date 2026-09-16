@@ -1,6 +1,5 @@
 
-
-import { model, Schema, Types } from 'mongoose';
+import { model, Schema, Types, Document } from 'mongoose';
 
 export type StatusPedido =
   | 'pendente'
@@ -28,8 +27,7 @@ export interface EnderecoEntrega {
   estado: string;
 }
 
-export interface Pedido {
-  id: string;
+export interface Pedido extends Document {
   usuarioId: Types.ObjectId;
   lojaId: Types.ObjectId;
   itens: ItemPedido[];
@@ -190,3 +188,4 @@ export const PedidoModel = model<Pedido>(
   'Pedido',
   pedidoSchema
 );
+

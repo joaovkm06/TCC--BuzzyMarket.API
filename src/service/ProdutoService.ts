@@ -1,3 +1,6 @@
+
+import { Types } from 'mongoose';
+
 import * as produtoRepository from '../repository/ProdutoRepository';
 import * as lojaRepository from '../repository/LojaRepository';
 
@@ -9,7 +12,6 @@ import * as lojaRepository from '../repository/LojaRepository';
 export async function criarProduto(
   dados: any
 ) {
-
   const {
     lojaId,
     nome,
@@ -22,9 +24,9 @@ export async function criarProduto(
   } = dados;
 
 
-  // ==============================
+  // ==========================================
   // VALIDAÇÕES
-  // ==============================
+  // ==========================================
 
   if (
     !lojaId ||
@@ -32,7 +34,6 @@ export async function criarProduto(
     !categoria ||
     preco === undefined
   ) {
-
     const erro: any = new Error(
       'lojaId, nome, categoria e preco são obrigatórios.'
     );
@@ -43,9 +44,94 @@ export async function criarProduto(
   }
 
 
-  // ==============================
+  if (typeof nome !== 'string' || !nome.trim()) {
+    const erro: any = new Error(
+      'O nome do produto não pode ser vazio.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  if (
+    typeof categoria !== 'string' ||
+    !categoria.trim()
+  ) {
+    const erro: any = new Error(
+      'A categoria do produto não pode ser vazia.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  if (
+    typeof preco !== 'number' ||
+    preco < 0
+  ) {
+    const erro: any = new Error(
+      'O preço deve ser um número maior ou igual a zero.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  if (
+    estoque !== undefined &&
+    (
+      typeof estoque !== 'number' ||
+      estoque < 0
+    )
+  ) {
+    const erro: any = new Error(
+      'O estoque deve ser um número maior ou igual a zero.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  if (
+    ativo !== undefined &&
+    typeof ativo !== 'boolean'
+  ) {
+    const erro: any = new Error(
+      'O campo ativo deve ser true ou false.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ==========================================
+  // VALIDA ID DA LOJA
+  // ==========================================
+
+  if (!Types.ObjectId.isValid(lojaId)) {
+    const erro: any = new Error(
+      'ID da loja inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
+
+  // ==========================================
   // VERIFICA LOJA
-  // ==============================
+  // ==========================================
 
   const loja =
     await lojaRepository.buscarLojaPorIdSemPopulate(
@@ -53,7 +139,6 @@ export async function criarProduto(
     );
 
   if (!loja) {
-
     const erro: any = new Error(
       'Loja não encontrada.'
     );
@@ -64,12 +149,11 @@ export async function criarProduto(
   }
 
 
-  // ==============================
-  // LOJA BLOQUEADA
-  // ==============================
+  // ==========================================
+  // VERIFICA STATUS DA LOJA
+  // ==========================================
 
   if (loja.status === 'bloqueada') {
-
     const erro: any = new Error(
       'Não é possível cadastrar produtos em uma loja bloqueada.'
     );
@@ -80,30 +164,22 @@ export async function criarProduto(
   }
 
 
-  // ==============================
+  // ==========================================
   // CRIA PRODUTO
-  // ==============================
+  // ==========================================
 
   const produto =
     await produtoRepository.criarProduto({
-
-      lojaId,
-
-      nome,
-
+      lojaId: new Types.ObjectId(lojaId),
+      nome: nome.trim(),
       descricao,
-
-      categoria,
-
+      categoria: categoria.trim(),
       preco,
-
       estoque:
         estoque !== undefined
           ? estoque
           : 0,
-
       imagem,
-
       ativo:
         ativo !== undefined
           ? ativo
@@ -111,17 +187,13 @@ export async function criarProduto(
     });
 
 
-  // ==============================
-  // BUSCA COM LOJA
-  // ==============================
+  // ==========================================
+  // RETORNA COM LOJA
+  // ==========================================
 
-  const produtoCriado =
-    await produtoRepository.buscarProdutoPorId(
-      produto._id.toString()
-    );
-
-
-  return produtoCriado;
+  return await produtoRepository.buscarProdutoPorId(
+    produto._id.toString()
+  );
 }
 
 
@@ -130,9 +202,7 @@ export async function criarProduto(
 // ==========================================
 
 export async function listarProdutos() {
-
   return await produtoRepository.listarProdutos();
-
 }
 
 
@@ -143,12 +213,21 @@ export async function listarProdutos() {
 export async function buscarProdutoPorId(
   id: string
 ) {
+  if (!Types.ObjectId.isValid(id)) {
+    const erro: any = new Error(
+      'ID do produto inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
 
   const produto =
     await produtoRepository.buscarProdutoPorId(id);
 
   if (!produto) {
-
     const erro: any = new Error(
       'Produto não encontrado.'
     );
@@ -169,8 +248,16 @@ export async function buscarProdutoPorId(
 export async function listarProdutosPorLoja(
   lojaId: string
 ) {
+  if (!Types.ObjectId.isValid(lojaId)) {
+    const erro: any = new Error(
+      'ID da loja inválido.'
+    );
 
-  // Verifica loja
+    erro.status = 400;
+
+    throw erro;
+  }
+
 
   const loja =
     await lojaRepository.buscarLojaPorIdSemPopulate(
@@ -178,7 +265,6 @@ export async function listarProdutosPorLoja(
     );
 
   if (!loja) {
-
     const erro: any = new Error(
       'Loja não encontrada.'
     );
@@ -196,7 +282,6 @@ export async function listarProdutosPorLoja(
 
 
   return {
-
     loja: {
       id: loja._id,
       nome: loja.nome,
@@ -205,7 +290,6 @@ export async function listarProdutosPorLoja(
     },
 
     produtos
-
   };
 }
 
@@ -218,6 +302,16 @@ export async function atualizarProduto(
   id: string,
   dados: any
 ) {
+  if (!Types.ObjectId.isValid(id)) {
+    const erro: any = new Error(
+      'ID do produto inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
 
   const produto =
     await produtoRepository.buscarProdutoSemPopulate(
@@ -226,7 +320,6 @@ export async function atualizarProduto(
 
 
   if (!produto) {
-
     const erro: any = new Error(
       'Produto não encontrado.'
     );
@@ -238,7 +331,6 @@ export async function atualizarProduto(
 
 
   const {
-    lojaId,
     nome,
     descricao,
     categoria,
@@ -249,34 +341,17 @@ export async function atualizarProduto(
   } = dados;
 
 
-  // ==============================
-  // ALTERAR LOJA
-  // ==============================
+  // ==========================================
+  // NOME
+  // ==========================================
 
-  if (lojaId !== undefined) {
-
-    const loja =
-      await lojaRepository.buscarLojaPorIdSemPopulate(
-        lojaId
-      );
-
-
-    if (!loja) {
-
+  if (nome !== undefined) {
+    if (
+      typeof nome !== 'string' ||
+      !nome.trim()
+    ) {
       const erro: any = new Error(
-        'Nova loja não encontrada.'
-      );
-
-      erro.status = 404;
-
-      throw erro;
-    }
-
-
-    if (loja.status === 'bloqueada') {
-
-      const erro: any = new Error(
-        'Não é possível vincular o produto a uma loja bloqueada.'
+        'O nome do produto não pode ser vazio.'
       );
 
       erro.status = 400;
@@ -284,40 +359,135 @@ export async function atualizarProduto(
       throw erro;
     }
 
-
-    produto.lojaId = lojaId;
+    produto.nome = nome.trim();
   }
 
 
-  // ==============================
-  // CAMPOS
-  // ==============================
-
-  if (nome !== undefined) {
-    produto.nome = nome;
-  }
+  // ==========================================
+  // DESCRIÇÃO
+  // ==========================================
 
   if (descricao !== undefined) {
-    produto.descricao = descricao;
+    if (
+      typeof descricao !== 'string'
+    ) {
+      const erro: any = new Error(
+        'A descrição deve ser um texto.'
+      );
+
+      erro.status = 400;
+
+      throw erro;
+    }
+
+    produto.descricao = descricao.trim();
   }
+
+
+  // ==========================================
+  // CATEGORIA
+  // ==========================================
 
   if (categoria !== undefined) {
-    produto.categoria = categoria;
+    if (
+      typeof categoria !== 'string' ||
+      !categoria.trim()
+    ) {
+      const erro: any = new Error(
+        'A categoria do produto não pode ser vazia.'
+      );
+
+      erro.status = 400;
+
+      throw erro;
+    }
+
+    produto.categoria = categoria.trim();
   }
 
+
+  // ==========================================
+  // PREÇO
+  // ==========================================
+
   if (preco !== undefined) {
+    if (
+      typeof preco !== 'number' ||
+      preco < 0
+    ) {
+      const erro: any = new Error(
+        'O preço deve ser um número maior ou igual a zero.'
+      );
+
+      erro.status = 400;
+
+      throw erro;
+    }
+
     produto.preco = preco;
   }
 
+
+  // ==========================================
+  // ESTOQUE
+  // ==========================================
+
   if (estoque !== undefined) {
+    if (
+      typeof estoque !== 'number' ||
+      estoque < 0
+    ) {
+      const erro: any = new Error(
+        'O estoque deve ser um número maior ou igual a zero.'
+      );
+
+      erro.status = 400;
+
+      throw erro;
+    }
+
     produto.estoque = estoque;
   }
 
+
+  // ==========================================
+  // IMAGEM
+  // ==========================================
+
   if (imagem !== undefined) {
-    produto.imagem = imagem;
+    if (
+      typeof imagem !== 'string'
+    ) {
+      const erro: any = new Error(
+        'A imagem deve ser um texto.'
+      );
+
+      erro.status = 400;
+
+      throw erro;
+    }
+
+    produto.imagem = imagem.trim();
   }
 
+
+  // ==========================================
+  // ATIVO
+  // ==========================================
+
   if (ativo !== undefined) {
+    if (
+      typeof ativo !== 'boolean'
+    ) {
+      const erro: any = new Error(
+        'O campo ativo deve ser true ou false.'
+      );
+
+      erro.status = 400;
+
+      throw erro;
+    }
+
     produto.ativo = ativo;
   }
 
@@ -339,9 +509,18 @@ export async function atualizarEstoque(
   id: string,
   estoque: any
 ) {
+  if (!Types.ObjectId.isValid(id)) {
+    const erro: any = new Error(
+      'ID do produto inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
 
   if (estoque === undefined) {
-
     const erro: any = new Error(
       'Informe o novo estoque.'
     );
@@ -356,7 +535,6 @@ export async function atualizarEstoque(
     typeof estoque !== 'number' ||
     estoque < 0
   ) {
-
     const erro: any = new Error(
       'O estoque deve ser um número maior ou igual a zero.'
     );
@@ -374,7 +552,6 @@ export async function atualizarEstoque(
 
 
   if (!produto) {
-
     const erro: any = new Error(
       'Produto não encontrado.'
     );
@@ -391,13 +568,9 @@ export async function atualizarEstoque(
 
 
   return {
-
     id: produto._id,
-
     nome: produto.nome,
-
     estoque: produto.estoque
-
   };
 }
 
@@ -410,9 +583,18 @@ export async function atualizarAtivo(
   id: string,
   ativo: any
 ) {
+  if (!Types.ObjectId.isValid(id)) {
+    const erro: any = new Error(
+      'ID do produto inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
 
   if (ativo === undefined) {
-
     const erro: any = new Error(
       'Informe se o produto está ativo ou não.'
     );
@@ -424,7 +606,6 @@ export async function atualizarAtivo(
 
 
   if (typeof ativo !== 'boolean') {
-
     const erro: any = new Error(
       'O campo ativo deve ser true ou false.'
     );
@@ -442,7 +623,6 @@ export async function atualizarAtivo(
 
 
   if (!produto) {
-
     const erro: any = new Error(
       'Produto não encontrado.'
     );
@@ -459,13 +639,9 @@ export async function atualizarAtivo(
 
 
   return {
-
     id: produto._id,
-
     nome: produto.nome,
-
     ativo: produto.ativo
-
   };
 }
 
@@ -477,6 +653,16 @@ export async function atualizarAtivo(
 export async function excluirProduto(
   id: string
 ) {
+  if (!Types.ObjectId.isValid(id)) {
+    const erro: any = new Error(
+      'ID do produto inválido.'
+    );
+
+    erro.status = 400;
+
+    throw erro;
+  }
+
 
   const produto =
     await produtoRepository.buscarProdutoSemPopulate(
@@ -485,7 +671,6 @@ export async function excluirProduto(
 
 
   if (!produto) {
-
     const erro: any = new Error(
       'Produto não encontrado.'
     );
@@ -500,3 +685,4 @@ export async function excluirProduto(
 
   return true;
 }
+

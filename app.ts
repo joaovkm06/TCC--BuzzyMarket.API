@@ -1,3 +1,4 @@
+
 import express from 'express';
 
 import userRouter from './src/router/UserRoutes';
@@ -11,9 +12,19 @@ import authRouter from './src/auth/AuthRouter';
 
 import { swaggerDocument, swaggerUi } from './src/config/Swagger';
 
+import { errorHandler } from './src/error/ErrorWandler';
+
 const app = express();
 
+// ======================================================
+// MIDDLEWARES
+// ======================================================
+
 app.use(express.json());
+
+// ======================================================
+// SWAGGER
+// ======================================================
 
 app.use(
   '/api-docs',
@@ -21,19 +32,38 @@ app.use(
   swaggerUi.setup(swaggerDocument)
 );
 
+// ======================================================
+// ROTA INICIAL
+// ======================================================
+
 app.get('/', (req, res) => {
   res.json({
     mensagem: 'BuzzyMarket API funcionando!'
   });
 });
 
+// ======================================================
+// ROTAS
+// ======================================================
+
 app.use('/users', userRouter);
+
 app.use('/lojas', lojaRouter);
+
 app.use('/produtos', produtoRouter);
+
 app.use('/carrinho', carrinhoRouter);
+
 app.use('/pedidos', pedidoRouter);
+
 app.use('/notificacoes', notificacaoRouter);
+
 app.use('/pagamentos', pagamentoRouter);
+
 app.use('/auth', authRouter);
 
+
+app.use(errorHandler);
+
 export default app;
+

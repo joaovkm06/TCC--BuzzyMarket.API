@@ -1,15 +1,35 @@
+
 import * as pedidoRepository from '../repository/PedidoRepository';
 import * as userRepository from '../repository/UserRepository';
 import * as lojaRepository from '../repository/LojaRepository';
 import * as produtoRepository from '../repository/ProdutoRepository';
 
+
+// ======================================================
+// FUNÇÃO AUXILIAR PARA CRIAR ERROS
+// ======================================================
+
+function criarErro(mensagem: string, status: number) {
+  const erro: any = new Error(mensagem);
+  erro.status = status;
+
+  return erro;
+}
+
+
+// ======================================================
+// CRIAR PEDIDO
+// ======================================================
+
 export async function criarPedido(dados: any) {
+
   const {
     usuarioId,
     lojaId,
     itens,
     enderecoEntrega
   } = dados;
+
 
   // ==================================================
   // VALIDAÇÕES
@@ -23,14 +43,13 @@ export async function criarPedido(dados: any) {
     itens.length === 0 ||
     !enderecoEntrega
   ) {
-    const erro: any = new Error(
-      'usuarioId, lojaId, itens e enderecoEntrega são obrigatórios.'
+
+    throw criarErro(
+      'usuarioId, lojaId, itens e enderecoEntrega são obrigatórios.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
 
   // ==================================================
   // VERIFICA USUÁRIO
@@ -41,25 +60,24 @@ export async function criarPedido(dados: any) {
       usuarioId.toString()
     );
 
+
   if (!usuario) {
-    const erro: any = new Error(
-      'Usuário não encontrado.'
+
+    throw criarErro(
+      'Usuário não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
+
 
   if (usuario.perfil !== 'cliente') {
-    const erro: any = new Error(
-      'Somente usuários com perfil cliente podem realizar pedidos.'
+
+    throw criarErro(
+      'Somente usuários com perfil cliente podem realizar pedidos.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
 
   // ==================================================
   // VERIFICA LOJA
@@ -70,25 +88,24 @@ export async function criarPedido(dados: any) {
       lojaId.toString()
     );
 
+
   if (!loja) {
-    const erro: any = new Error(
-      'Loja não encontrada.'
+
+    throw criarErro(
+      'Loja não encontrada.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
+
 
   if (loja.status !== 'aprovada') {
-    const erro: any = new Error(
-      'Não é possível realizar pedidos em uma loja que não está aprovada.'
+
+    throw criarErro(
+      'Não é possível realizar pedidos em uma loja que não está aprovada.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
 
   // ==================================================
   // VERIFICA ENDEREÇO
@@ -102,14 +119,13 @@ export async function criarPedido(dados: any) {
     !enderecoEntrega.cidade ||
     !enderecoEntrega.estado
   ) {
-    const erro: any = new Error(
-      'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço de entrega.'
+
+    throw criarErro(
+      'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço de entrega.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
 
   // ==================================================
   // PROCESSA PRODUTOS
@@ -119,31 +135,38 @@ export async function criarPedido(dados: any) {
 
   let valorTotal = 0;
 
+
   for (const item of itens) {
 
+    // ==================================================
+    // VERIFICA PRODUTO ID
+    // ==================================================
+
     if (!item.produtoId) {
-      const erro: any = new Error(
-        'Todos os itens precisam possuir produtoId.'
+
+      throw criarErro(
+        'Todos os itens precisam possuir produtoId.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
+
+
+    // ==================================================
+    // VERIFICA QUANTIDADE
+    // ==================================================
 
     if (
-      !item.quantidade ||
       typeof item.quantidade !== 'number' ||
+      !Number.isInteger(item.quantidade) ||
       item.quantidade < 1
     ) {
-      const erro: any = new Error(
-        'A quantidade de cada produto deve ser maior que zero.'
+
+      throw criarErro(
+        'A quantidade de cada produto deve ser um número inteiro maior que zero.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
+
 
     // ==================================================
     // BUSCA PRODUTO
@@ -154,15 +177,15 @@ export async function criarPedido(dados: any) {
         item.produtoId.toString()
       );
 
+
     if (!produto) {
-      const erro: any = new Error(
-        `Produto ${item.produtoId} não encontrado.`
+
+      throw criarErro(
+        `Produto ${item.produtoId} não encontrado.`,
+        404
       );
-
-      erro.status = 404;
-
-      throw erro;
     }
+
 
     // ==================================================
     // VERIFICA LOJA DO PRODUTO
@@ -172,103 +195,125 @@ export async function criarPedido(dados: any) {
       produto.lojaId.toString() !==
       lojaId.toString()
     ) {
-      const erro: any = new Error(
-        `O produto "${produto.nome}" não pertence a esta loja.`
+
+      throw criarErro(
+        `O produto "${produto.nome}" não pertence a esta loja.`,
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
+
     // ==================================================
-    // PRODUTO ATIVO
+    // VERIFICA SE PRODUTO ESTÁ ATIVO
     // ==================================================
 
     if (!produto.ativo) {
-      const erro: any = new Error(
-        `O produto "${produto.nome}" está indisponível.`
+
+      throw criarErro(
+        `O produto "${produto.nome}" está indisponível.`,
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
+
     // ==================================================
-    // ESTOQUE
+    // VERIFICA ESTOQUE
     // ==================================================
 
     if (produto.estoque < item.quantidade) {
-      const erro: any = new Error(
-        `Estoque insuficiente para o produto "${produto.nome}".`
+
+      const erro: any = criarErro(
+        `Estoque insuficiente para o produto "${produto.nome}".`,
+        400
       );
 
-      erro.status = 400;
-      erro.estoqueDisponivel = produto.estoque;
-      erro.quantidadeSolicitada = item.quantidade;
+      erro.estoqueDisponivel =
+        produto.estoque;
+
+      erro.quantidadeSolicitada =
+        item.quantidade;
 
       throw erro;
     }
 
+
     // ==================================================
-    // SUBTOTAL
+    // CALCULA SUBTOTAL
     // ==================================================
 
     const subtotal =
       produto.preco * item.quantidade;
 
+
     valorTotal += subtotal;
 
+
     // ==================================================
-    // ITEM DO PEDIDO
+    // ADICIONA ITEM AO PEDIDO
     // ==================================================
 
     itensPedido.push({
+
       produtoId: produto._id,
+
       nome: produto.nome,
+
       quantidade: item.quantidade,
+
       preco: produto.preco,
+
       subtotal
+
     });
   }
 
-  // ==================================================
+
+  // ======================================================
   // CRIA PEDIDO
-  // ==================================================
+  // ======================================================
 
   const pedido =
     await pedidoRepository.criarPedido({
+
       usuarioId,
+
       lojaId,
+
       itens: itensPedido,
+
       valorTotal,
+
       enderecoEntrega,
+
       status: 'pendente'
+
     });
 
-  // ==================================================
+
+  // ======================================================
   // DIMINUI ESTOQUE
-  // ==================================================
+  // ======================================================
 
   for (const item of itensPedido) {
 
-    await produtoRepository.atualizarProduto(
+    await produtoRepository.alterarEstoque(
+
       item.produtoId.toString(),
-      {
-        $inc: {
-          estoque: -item.quantidade
-        }
-      }
+
+      -item.quantidade
+
     );
   }
 
-  // ==================================================
+
+  // ======================================================
   // BUSCA PEDIDO COMPLETO
-  // ==================================================
+  // ======================================================
 
   return await pedidoRepository.buscarPedidoPorId(
+
     pedido._id.toString()
+
   );
 }
 
@@ -278,7 +323,9 @@ export async function criarPedido(dados: any) {
 // ======================================================
 
 export async function listarPedidos() {
+
   return await pedidoRepository.listarPedidos();
+
 }
 
 
@@ -289,18 +336,21 @@ export async function listarPedidos() {
 export async function buscarPedidoPorId(
   id: string
 ) {
-  const pedido =
-    await pedidoRepository.buscarPedidoPorId(id);
 
-  if (!pedido) {
-    const erro: any = new Error(
-      'Pedido não encontrado.'
+  const pedido =
+    await pedidoRepository.buscarPedidoPorId(
+      id
     );
 
-    erro.status = 404;
 
-    throw erro;
+  if (!pedido) {
+
+    throw criarErro(
+      'Pedido não encontrado.',
+      404
+    );
   }
+
 
   return pedido;
 }
@@ -314,33 +364,49 @@ export async function listarPedidosPorUsuario(
   usuarioId: string
 ) {
 
+  // ==================================================
+  // VERIFICA USUÁRIO
+  // ==================================================
+
   const usuario =
     await userRepository.buscarUsuarioSemPopulate(
       usuarioId
     );
 
+
   if (!usuario) {
-    const erro: any = new Error(
-      'Usuário não encontrado.'
+
+    throw criarErro(
+      'Usuário não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
+
+
+  // ==================================================
+  // BUSCA PEDIDOS
+  // ==================================================
 
   const pedidos =
     await pedidoRepository.listarPedidosPorUsuario(
       usuarioId
     );
 
+
   return {
+
     usuario: {
+
       id: usuario._id,
+
       nome: usuario.nome,
+
       email: usuario.email
+
     },
+
     pedidos
+
   };
 }
 
@@ -353,33 +419,49 @@ export async function listarPedidosPorLoja(
   lojaId: string
 ) {
 
+  // ==================================================
+  // VERIFICA LOJA
+  // ==================================================
+
   const loja =
     await lojaRepository.buscarLojaPorIdSemPopulate(
       lojaId
     );
 
+
   if (!loja) {
-    const erro: any = new Error(
-      'Loja não encontrada.'
+
+    throw criarErro(
+      'Loja não encontrada.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
+
+
+  // ==================================================
+  // BUSCA PEDIDOS
+  // ==================================================
 
   const pedidos =
     await pedidoRepository.listarPedidosPorLoja(
       lojaId
     );
 
+
   return {
+
     loja: {
+
       id: loja._id,
+
       nome: loja.nome,
+
       categoria: loja.categoria
+
     },
+
     pedidos
+
   };
 }
 
@@ -393,66 +475,106 @@ export async function atualizarStatusPedido(
   status: string
 ) {
 
+  // ==================================================
+  // STATUS PERMITIDOS
+  // ==================================================
+
   const statusPermitidos = [
+
     'pendente',
+
     'confirmado',
+
     'preparando',
+
     'enviado',
+
     'entregue',
+
     'cancelado'
+
   ];
 
+
+  // ==================================================
+  // VERIFICA STATUS
+  // ==================================================
+
   if (!statusPermitidos.includes(status)) {
-    const erro: any = new Error(
-      'Status de pedido inválido.'
+
+    const erro: any = criarErro(
+      'Status de pedido inválido.',
+      400
     );
 
-    erro.status = 400;
-    erro.statusPermitidos = statusPermitidos;
+    erro.statusPermitidos =
+      statusPermitidos;
 
     throw erro;
   }
+
+
+  // ==================================================
+  // BUSCA PEDIDO
+  // ==================================================
 
   const pedido =
     await pedidoRepository.buscarPedidoSemPopulate(
       id
     );
 
+
   if (!pedido) {
-    const erro: any = new Error(
-      'Pedido não encontrado.'
+
+    throw criarErro(
+      'Pedido não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
+
+
+  // ==================================================
+  // PEDIDO ENTREGUE
+  // ==================================================
 
   if (pedido.status === 'entregue') {
-    const erro: any = new Error(
-      'Não é possível alterar um pedido que já foi entregue.'
+
+    throw criarErro(
+      'Não é possível alterar um pedido que já foi entregue.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
+
+  // ==================================================
+  // PEDIDO CANCELADO
+  // ==================================================
 
   if (pedido.status === 'cancelado') {
-    const erro: any = new Error(
-      'Não é possível alterar um pedido cancelado.'
+
+    throw criarErro(
+      'Não é possível alterar um pedido cancelado.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
+
+  // ==================================================
+  // ATUALIZA STATUS
+  // ==================================================
 
   pedido.status = status as any;
 
   await pedido.save();
 
-  return await pedidoRepository.buscarPedidoPorId(id);
+
+  // ==================================================
+  // RETORNA PEDIDO
+  // ==================================================
+
+  return await pedidoRepository.buscarPedidoPorId(
+    id
+  );
 }
 
 
@@ -464,20 +586,24 @@ export async function cancelarPedido(
   id: string
 ) {
 
+  // ==================================================
+  // BUSCA PEDIDO
+  // ==================================================
+
   const pedido =
     await pedidoRepository.buscarPedidoSemPopulate(
       id
     );
 
+
   if (!pedido) {
-    const erro: any = new Error(
-      'Pedido não encontrado.'
+
+    throw criarErro(
+      'Pedido não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
+
 
   // ==================================================
   // NÃO PODE CANCELAR ENVIADO OU ENTREGUE
@@ -487,24 +613,26 @@ export async function cancelarPedido(
     pedido.status === 'enviado' ||
     pedido.status === 'entregue'
   ) {
-    const erro: any = new Error(
-      'Não é possível cancelar um pedido que já foi enviado ou entregue.'
+
+    throw criarErro(
+      'Não é possível cancelar um pedido que já foi enviado ou entregue.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
+
+  // ==================================================
+  // JÁ ESTÁ CANCELADO
+  // ==================================================
 
   if (pedido.status === 'cancelado') {
-    const erro: any = new Error(
-      'Este pedido já está cancelado.'
+
+    throw criarErro(
+      'Este pedido já está cancelado.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
+
 
   // ==================================================
   // DEVOLVE ESTOQUE
@@ -512,23 +640,31 @@ export async function cancelarPedido(
 
   for (const item of pedido.itens) {
 
-    await produtoRepository.atualizarProduto(
+    await produtoRepository.alterarEstoque(
+
       item.produtoId.toString(),
-      {
-        $inc: {
-          estoque: item.quantidade
-        }
-      }
+
+      item.quantidade
+
     );
   }
 
+
   // ==================================================
-  // CANCELA
+  // CANCELA PEDIDO
   // ==================================================
 
   pedido.status = 'cancelado';
 
   await pedido.save();
 
-  return await pedidoRepository.buscarPedidoPorId(id);
+
+  // ==================================================
+  // RETORNA PEDIDO COMPLETO
+  // ==================================================
+
+  return await pedidoRepository.buscarPedidoPorId(
+    id
+  );
 }
+
