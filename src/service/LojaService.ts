@@ -15,24 +15,7 @@ import * as lojaRepository
 import * as userRepository
   from '../repository/UserRepository';
 
-
-// ======================================================
-// ERRO PADRÃO
-// ======================================================
-
-function erro(
-  mensagem: string,
-  status = 400
-) {
-
-  const error: any =
-    new Error(mensagem);
-
-  error.status = status;
-
-  return error;
-}
-
+import { AppError } from '../error/AppError';
 
 // ======================================================
 // CRIAR LOJA
@@ -53,12 +36,12 @@ export async function criarLoja(
     )
   ) {
 
-    throw erro(
-      'ID do proprietário inválido.'
+    throw new AppError(
+      'ID do proprietário inválido.',
+      400
     );
 
   }
-
 
   const {
     nome,
@@ -71,7 +54,6 @@ export async function criarLoja(
     horarios
   } = dados;
 
-
   // ====================================================
   // VALIDAÇÕES BÁSICAS
   // ====================================================
@@ -83,12 +65,12 @@ export async function criarLoja(
     !endereco
   ) {
 
-    throw erro(
-      'Nome, categoria, telefone e endereco são obrigatórios.'
+    throw new AppError(
+      'Nome, categoria, telefone e endereco são obrigatórios.',
+      400
     );
 
   }
-
 
   // ====================================================
   // VALIDAÇÃO DO ENDEREÇO
@@ -103,12 +85,12 @@ export async function criarLoja(
     !endereco.estado
   ) {
 
-    throw erro(
-      'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço.'
+    throw new AppError(
+      'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço.',
+      400
     );
 
   }
-
 
   // ====================================================
   // VERIFICA PROPRIETÁRIO
@@ -120,16 +102,14 @@ export async function criarLoja(
         proprietarioId
       );
 
-
   if (!proprietario) {
 
-    throw erro(
+    throw new AppError(
       'Proprietário não encontrado.',
       404
     );
 
   }
-
 
   // ====================================================
   // SOMENTE LOGISTA
@@ -140,13 +120,12 @@ export async function criarLoja(
     UserProfile.Logista
   ) {
 
-    throw erro(
+    throw new AppError(
       'Somente usuários com perfil logista podem ser proprietários de uma loja.',
       403
     );
 
   }
-
 
   // ====================================================
   // VERIFICA SE JÁ POSSUI LOJA
@@ -158,15 +137,14 @@ export async function criarLoja(
         proprietarioId
       );
 
-
   if (lojaExistente) {
 
-    throw erro(
-      'Este usuário já possui uma loja.'
+    throw new AppError(
+      'Este usuário já possui uma loja.',
+      400
     );
 
   }
-
 
   // ====================================================
   // VERIFICA VÍNCULO NO USUÁRIO
@@ -174,12 +152,12 @@ export async function criarLoja(
 
   if (proprietario.lojaId) {
 
-    throw erro(
-      'Este usuário já possui uma loja vinculada.'
+    throw new AppError(
+      'Este usuário já possui uma loja vinculada.',
+      400
     );
 
   }
-
 
   // ====================================================
   // CRIA LOJA
@@ -188,7 +166,8 @@ export async function criarLoja(
   const loja =
     await lojaRepository.criarLoja({
 
-      nome: nome.trim(),
+      nome:
+        nome.trim(),
 
       descricao:
         descricao?.trim(),
@@ -212,13 +191,13 @@ export async function criarLoja(
           proprietarioId
         ),
 
-      status: 'pendente',
+      status:
+        'pendente',
 
       horarios:
         horarios || {}
 
     });
-
 
   // ====================================================
   // VINCULA LOJA AO USUÁRIO
@@ -235,10 +214,8 @@ export async function criarLoja(
 
     );
 
-
   return loja;
 }
-
 
 // ======================================================
 // LISTAR LOJAS
@@ -250,7 +227,6 @@ export async function listarLojas() {
     .listarLojas();
 
 }
-
 
 // ======================================================
 // BUSCAR LOJA POR ID
@@ -264,31 +240,28 @@ export async function buscarLojaPorId(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
 
   }
-
 
   const loja =
     await lojaRepository
       .buscarLojaPorId(id);
 
-
   if (!loja) {
 
-    throw erro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
 
   }
 
-
   return loja;
 }
-
 
 // ======================================================
 // BUSCAR LOJA DO PROPRIETÁRIO
@@ -304,12 +277,12 @@ export async function buscarLojaDoProprietario(
     )
   ) {
 
-    throw erro(
-      'ID do proprietário inválido.'
+    throw new AppError(
+      'ID do proprietário inválido.',
+      400
     );
 
   }
-
 
   const loja =
     await lojaRepository
@@ -317,20 +290,17 @@ export async function buscarLojaDoProprietario(
         proprietarioId
       );
 
-
   if (!loja) {
 
-    throw erro(
+    throw new AppError(
       'O usuário não possui uma loja.',
       404
     );
 
   }
 
-
   return loja;
 }
-
 
 // ======================================================
 // ATUALIZAR LOJA
@@ -345,12 +315,12 @@ export async function atualizarLoja(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
 
   }
-
 
   const loja =
     await lojaRepository
@@ -358,16 +328,14 @@ export async function atualizarLoja(
         id
       );
 
-
   if (!loja) {
 
-    throw erro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
 
   }
-
 
   const {
     nome,
@@ -378,7 +346,6 @@ export async function atualizarLoja(
     telefone,
     endereco
   } = dados;
-
 
   // ====================================================
   // NOME
@@ -393,8 +360,9 @@ export async function atualizarLoja(
       !nome.trim()
     ) {
 
-      throw erro(
-        'O nome da loja não pode ser vazio.'
+      throw new AppError(
+        'O nome da loja não pode ser vazio.',
+        400
       );
 
     }
@@ -403,7 +371,6 @@ export async function atualizarLoja(
       nome.trim();
 
   }
-
 
   // ====================================================
   // DESCRIÇÃO
@@ -418,8 +385,9 @@ export async function atualizarLoja(
       typeof descricao !== 'string'
     ) {
 
-      throw erro(
-        'A descrição deve ser um texto.'
+      throw new AppError(
+        'A descrição deve ser um texto.',
+        400
       );
 
     }
@@ -428,7 +396,6 @@ export async function atualizarLoja(
       descricao?.trim();
 
   }
-
 
   // ====================================================
   // CATEGORIA
@@ -443,8 +410,9 @@ export async function atualizarLoja(
       !categoria.trim()
     ) {
 
-      throw erro(
-        'A categoria da loja não pode ser vazia.'
+      throw new AppError(
+        'A categoria da loja não pode ser vazia.',
+        400
       );
 
     }
@@ -453,7 +421,6 @@ export async function atualizarLoja(
       categoria.trim();
 
   }
-
 
   // ====================================================
   // FOTO
@@ -468,8 +435,9 @@ export async function atualizarLoja(
       typeof foto !== 'string'
     ) {
 
-      throw erro(
-        'A foto deve ser um texto.'
+      throw new AppError(
+        'A foto deve ser um texto.',
+        400
       );
 
     }
@@ -478,7 +446,6 @@ export async function atualizarLoja(
       foto?.trim();
 
   }
-
 
   // ====================================================
   // BANNER
@@ -493,8 +460,9 @@ export async function atualizarLoja(
       typeof banner !== 'string'
     ) {
 
-      throw erro(
-        'O banner deve ser um texto.'
+      throw new AppError(
+        'O banner deve ser um texto.',
+        400
       );
 
     }
@@ -503,7 +471,6 @@ export async function atualizarLoja(
       banner?.trim();
 
   }
-
 
   // ====================================================
   // TELEFONE
@@ -518,8 +485,9 @@ export async function atualizarLoja(
       !telefone.trim()
     ) {
 
-      throw erro(
-        'O telefone da loja não pode ser vazio.'
+      throw new AppError(
+        'O telefone da loja não pode ser vazio.',
+        400
       );
 
     }
@@ -528,7 +496,6 @@ export async function atualizarLoja(
       telefone.trim();
 
   }
-
 
   // ====================================================
   // ENDEREÇO
@@ -548,8 +515,9 @@ export async function atualizarLoja(
       !endereco.estado
     ) {
 
-      throw erro(
-        'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço.'
+      throw new AppError(
+        'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço.',
+        400
       );
 
     }
@@ -559,17 +527,14 @@ export async function atualizarLoja(
 
   }
 
-
   // ====================================================
   // SALVAR
   // ====================================================
 
   await loja.save();
 
-
   return loja;
 }
-
 
 // ======================================================
 // ATUALIZAR HORÁRIOS
@@ -584,12 +549,12 @@ export async function atualizarHorarios(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
 
   }
-
 
   if (
     !horarios ||
@@ -597,12 +562,12 @@ export async function atualizarHorarios(
     Array.isArray(horarios)
   ) {
 
-    throw erro(
-      'Informe os horários da loja.'
+    throw new AppError(
+      'Informe os horários da loja.',
+      400
     );
 
   }
-
 
   const loja =
     await lojaRepository
@@ -610,27 +575,22 @@ export async function atualizarHorarios(
         id
       );
 
-
   if (!loja) {
 
-    throw erro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
 
   }
 
-
   loja.horarios =
     horarios;
 
-
   await loja.save();
-
 
   return loja;
 }
-
 
 // ======================================================
 // ATUALIZAR STATUS
@@ -645,12 +605,12 @@ export async function atualizarStatusLoja(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
 
   }
-
 
   const statusPermitidos:
     StatusLoja[] = [
@@ -665,19 +625,24 @@ export async function atualizarStatusLoja(
 
     ];
 
-
   if (
     !statusPermitidos.includes(
       status
     )
   ) {
 
-    throw erro(
-      'Status inválido.'
-    );
+    const error =
+      new AppError(
+        'Status inválido.',
+        400
+      );
+
+    error.statusPermitidos =
+      statusPermitidos;
+
+    throw error;
 
   }
-
 
   const loja =
     await lojaRepository
@@ -685,27 +650,22 @@ export async function atualizarStatusLoja(
         id
       );
 
-
   if (!loja) {
 
-    throw erro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
 
   }
 
-
   loja.status =
     status;
 
-
   await loja.save();
-
 
   return loja;
 }
-
 
 // ======================================================
 // VERIFICAR SE A LOJA ESTÁ ABERTA
@@ -719,12 +679,12 @@ export async function verificarLojaAberta(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
 
   }
-
 
   const loja =
     await lojaRepository
@@ -732,16 +692,14 @@ export async function verificarLojaAberta(
         id
       );
 
-
   if (!loja) {
 
-    throw erro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
 
   }
-
 
   // ====================================================
   // LOJA NÃO APROVADA
@@ -762,7 +720,6 @@ export async function verificarLojaAberta(
 
   }
 
-
   // ====================================================
   // DATA E HORA ATUAL
   // ====================================================
@@ -770,10 +727,8 @@ export async function verificarLojaAberta(
   const agora =
     new Date();
 
-
   const diaSemana =
     agora.getDay();
-
 
   const dias = [
 
@@ -793,10 +748,8 @@ export async function verificarLojaAberta(
 
   ];
 
-
   const diaAtual =
     dias[diaSemana];
-
 
   // ====================================================
   // HORÁRIO DO DIA
@@ -806,7 +759,6 @@ export async function verificarLojaAberta(
     loja.horarios?.[
       diaAtual as keyof typeof loja.horarios
     ];
-
 
   if (!horario) {
 
@@ -822,7 +774,6 @@ export async function verificarLojaAberta(
     };
 
   }
-
 
   // ====================================================
   // HORA ATUAL
@@ -842,7 +793,6 @@ export async function verificarLojaAberta(
       .toString()
       .padStart(2, '0');
 
-
   // ====================================================
   // VERIFICA ABERTURA
   // ====================================================
@@ -854,7 +804,6 @@ export async function verificarLojaAberta(
 
     horaAtual <
       horario.fechamento;
-
 
   return {
 
@@ -869,7 +818,6 @@ export async function verificarLojaAberta(
   };
 }
 
-
 // ======================================================
 // EXCLUIR LOJA
 // ======================================================
@@ -882,12 +830,12 @@ export async function excluirLoja(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
 
   }
-
 
   const loja =
     await lojaRepository
@@ -895,16 +843,14 @@ export async function excluirLoja(
         id
       );
 
-
   if (!loja) {
 
-    throw erro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
 
   }
-
 
   // ====================================================
   // REMOVE LOJA DO PROPRIETÁRIO
@@ -915,7 +861,6 @@ export async function excluirLoja(
       loja.proprietarioId.toString()
     );
 
-
   // ====================================================
   // REMOVE LOJA DOS FUNCIONÁRIOS
   // ====================================================
@@ -925,14 +870,12 @@ export async function excluirLoja(
       id
     );
 
-
   // ====================================================
   // EXCLUI LOJA
   // ====================================================
 
   await lojaRepository
     .excluirLoja(id);
-
 
   return true;
 }

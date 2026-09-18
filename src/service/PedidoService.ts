@@ -4,17 +4,7 @@ import * as userRepository from '../repository/UserRepository';
 import * as lojaRepository from '../repository/LojaRepository';
 import * as produtoRepository from '../repository/ProdutoRepository';
 
-
-// ======================================================
-// FUNÇÃO AUXILIAR PARA CRIAR ERROS
-// ======================================================
-
-function criarErro(mensagem: string, status: number) {
-  const erro: any = new Error(mensagem);
-  erro.status = status;
-
-  return erro;
-}
+import { AppError } from '../error/AppError';
 
 
 // ======================================================
@@ -44,7 +34,7 @@ export async function criarPedido(dados: any) {
     !enderecoEntrega
   ) {
 
-    throw criarErro(
+    throw new AppError(
       'usuarioId, lojaId, itens e enderecoEntrega são obrigatórios.',
       400
     );
@@ -63,7 +53,7 @@ export async function criarPedido(dados: any) {
 
   if (!usuario) {
 
-    throw criarErro(
+    throw new AppError(
       'Usuário não encontrado.',
       404
     );
@@ -72,7 +62,7 @@ export async function criarPedido(dados: any) {
 
   if (usuario.perfil !== 'cliente') {
 
-    throw criarErro(
+    throw new AppError(
       'Somente usuários com perfil cliente podem realizar pedidos.',
       400
     );
@@ -91,7 +81,7 @@ export async function criarPedido(dados: any) {
 
   if (!loja) {
 
-    throw criarErro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
@@ -100,7 +90,7 @@ export async function criarPedido(dados: any) {
 
   if (loja.status !== 'aprovada') {
 
-    throw criarErro(
+    throw new AppError(
       'Não é possível realizar pedidos em uma loja que não está aprovada.',
       400
     );
@@ -120,7 +110,7 @@ export async function criarPedido(dados: any) {
     !enderecoEntrega.estado
   ) {
 
-    throw criarErro(
+    throw new AppError(
       'CEP, logradouro, número, bairro, cidade e estado são obrigatórios no endereço de entrega.',
       400
     );
@@ -144,7 +134,7 @@ export async function criarPedido(dados: any) {
 
     if (!item.produtoId) {
 
-      throw criarErro(
+      throw new AppError(
         'Todos os itens precisam possuir produtoId.',
         400
       );
@@ -161,7 +151,7 @@ export async function criarPedido(dados: any) {
       item.quantidade < 1
     ) {
 
-      throw criarErro(
+      throw new AppError(
         'A quantidade de cada produto deve ser um número inteiro maior que zero.',
         400
       );
@@ -180,7 +170,7 @@ export async function criarPedido(dados: any) {
 
     if (!produto) {
 
-      throw criarErro(
+      throw new AppError(
         `Produto ${item.produtoId} não encontrado.`,
         404
       );
@@ -196,7 +186,7 @@ export async function criarPedido(dados: any) {
       lojaId.toString()
     ) {
 
-      throw criarErro(
+      throw new AppError(
         `O produto "${produto.nome}" não pertence a esta loja.`,
         400
       );
@@ -209,7 +199,7 @@ export async function criarPedido(dados: any) {
 
     if (!produto.ativo) {
 
-      throw criarErro(
+      throw new AppError(
         `O produto "${produto.nome}" está indisponível.`,
         400
       );
@@ -222,7 +212,7 @@ export async function criarPedido(dados: any) {
 
     if (produto.estoque < item.quantidade) {
 
-      const erro: any = criarErro(
+      const erro = new AppError(
         `Estoque insuficiente para o produto "${produto.nome}".`,
         400
       );
@@ -345,7 +335,7 @@ export async function buscarPedidoPorId(
 
   if (!pedido) {
 
-    throw criarErro(
+    throw new AppError(
       'Pedido não encontrado.',
       404
     );
@@ -376,7 +366,7 @@ export async function listarPedidosPorUsuario(
 
   if (!usuario) {
 
-    throw criarErro(
+    throw new AppError(
       'Usuário não encontrado.',
       404
     );
@@ -431,7 +421,7 @@ export async function listarPedidosPorLoja(
 
   if (!loja) {
 
-    throw criarErro(
+    throw new AppError(
       'Loja não encontrada.',
       404
     );
@@ -502,11 +492,12 @@ export async function atualizarStatusPedido(
 
   if (!statusPermitidos.includes(status)) {
 
-    const erro: any = criarErro(
+    const erro = new AppError(
       'Status de pedido inválido.',
       400
     );
 
+    // Informação adicional utilizada pelo Controller.
     erro.statusPermitidos =
       statusPermitidos;
 
@@ -526,7 +517,7 @@ export async function atualizarStatusPedido(
 
   if (!pedido) {
 
-    throw criarErro(
+    throw new AppError(
       'Pedido não encontrado.',
       404
     );
@@ -539,7 +530,7 @@ export async function atualizarStatusPedido(
 
   if (pedido.status === 'entregue') {
 
-    throw criarErro(
+    throw new AppError(
       'Não é possível alterar um pedido que já foi entregue.',
       400
     );
@@ -552,7 +543,7 @@ export async function atualizarStatusPedido(
 
   if (pedido.status === 'cancelado') {
 
-    throw criarErro(
+    throw new AppError(
       'Não é possível alterar um pedido cancelado.',
       400
     );
@@ -598,7 +589,7 @@ export async function cancelarPedido(
 
   if (!pedido) {
 
-    throw criarErro(
+    throw new AppError(
       'Pedido não encontrado.',
       404
     );
@@ -614,7 +605,7 @@ export async function cancelarPedido(
     pedido.status === 'entregue'
   ) {
 
-    throw criarErro(
+    throw new AppError(
       'Não é possível cancelar um pedido que já foi enviado ou entregue.',
       400
     );
@@ -627,7 +618,7 @@ export async function cancelarPedido(
 
   if (pedido.status === 'cancelado') {
 
-    throw criarErro(
+    throw new AppError(
       'Este pedido já está cancelado.',
       400
     );
@@ -652,7 +643,7 @@ export async function cancelarPedido(
 
   // ==================================================
   // CANCELA PEDIDO
-  // ==================================================
+  // ======================================================
 
   pedido.status = 'cancelado';
 

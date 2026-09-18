@@ -12,6 +12,8 @@ import {
   StatusPagamento
 } from '../model/pagamento';
 
+import { AppError } from '../error/AppError';
+
 
 // ======================================================
 // CRIAR PAGAMENTO
@@ -39,13 +41,10 @@ export async function criarPagamento(
     !metodo
   ) {
 
-    const erro: any = new Error(
-      'pedidoId, valor e metodo são obrigatórios.'
+    throw new AppError(
+      'pedidoId, valor e metodo são obrigatórios.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -55,13 +54,10 @@ export async function criarPagamento(
 
   if (!Types.ObjectId.isValid(pedidoId)) {
 
-    const erro: any = new Error(
-      'pedidoId inválido.'
+    throw new AppError(
+      'pedidoId inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -75,17 +71,17 @@ export async function criarPagamento(
     'boleto'
   ];
 
+
   if (
     !metodosPermitidos.includes(
       metodo as MetodoPagamento
     )
   ) {
 
-    const erro: any = new Error(
-      'Método de pagamento inválido.'
+    const erro = new AppError(
+      'Método de pagamento inválido.',
+      400
     );
-
-    erro.status = 400;
 
     erro.metodosPermitidos =
       metodosPermitidos;
@@ -103,13 +99,10 @@ export async function criarPagamento(
     valor <= 0
   ) {
 
-    const erro: any = new Error(
-      'O valor do pagamento deve ser maior que zero.'
+    throw new AppError(
+      'O valor do pagamento deve ser maior que zero.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -126,13 +119,10 @@ export async function criarPagamento(
 
   if (!pedido) {
 
-    const erro: any = new Error(
-      'Pedido não encontrado.'
+    throw new AppError(
+      'Pedido não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -144,13 +134,10 @@ export async function criarPagamento(
     pedido.status === 'cancelado'
   ) {
 
-    const erro: any = new Error(
-      'Não é possível criar pagamento para um pedido cancelado.'
+    throw new AppError(
+      'Não é possível criar pagamento para um pedido cancelado.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -167,11 +154,10 @@ export async function criarPagamento(
 
   if (pagamentoExistente) {
 
-    const erro: any = new Error(
-      'Este pedido já possui um pagamento.'
+    const erro = new AppError(
+      'Este pedido já possui um pagamento.',
+      400
     );
-
-    erro.status = 400;
 
     erro.pagamentoId =
       pagamentoExistente._id;
@@ -186,11 +172,10 @@ export async function criarPagamento(
 
   if (valor !== pedido.valorTotal) {
 
-    const erro: any = new Error(
-      'O valor do pagamento deve ser igual ao valor total do pedido.'
+    const erro = new AppError(
+      'O valor do pagamento deve ser igual ao valor total do pedido.',
+      400
     );
-
-    erro.status = 400;
 
     erro.valorPedido =
       pedido.valorTotal;
@@ -253,13 +238,10 @@ export async function buscarPagamentoPorPedido(
 
   if (!Types.ObjectId.isValid(pedidoId)) {
 
-    const erro: any = new Error(
-      'pedidoId inválido.'
+    throw new AppError(
+      'pedidoId inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -276,13 +258,10 @@ export async function buscarPagamentoPorPedido(
 
   if (!pedido) {
 
-    const erro: any = new Error(
-      'Pedido não encontrado.'
+    throw new AppError(
+      'Pedido não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -299,13 +278,10 @@ export async function buscarPagamentoPorPedido(
 
   if (!pagamento) {
 
-    const erro: any = new Error(
-      'Nenhum pagamento encontrado para este pedido.'
+    throw new AppError(
+      'Nenhum pagamento encontrado para este pedido.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -323,13 +299,10 @@ export async function buscarPagamentoPorId(
 
   if (!Types.ObjectId.isValid(id)) {
 
-    const erro: any = new Error(
-      'ID do pagamento inválido.'
+    throw new AppError(
+      'ID do pagamento inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -342,13 +315,10 @@ export async function buscarPagamentoPorId(
 
   if (!pagamento) {
 
-    const erro: any = new Error(
-      'Pagamento não encontrado.'
+    throw new AppError(
+      'Pagamento não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -383,11 +353,10 @@ export async function atualizarStatusPagamento(
     )
   ) {
 
-    const erro: any = new Error(
-      'Status de pagamento inválido.'
+    const erro = new AppError(
+      'Status de pagamento inválido.',
+      400
     );
-
-    erro.status = 400;
 
     erro.statusPermitidos =
       statusPermitidos;
@@ -402,13 +371,10 @@ export async function atualizarStatusPagamento(
 
   if (!Types.ObjectId.isValid(id)) {
 
-    const erro: any = new Error(
-      'ID do pagamento inválido.'
+    throw new AppError(
+      'ID do pagamento inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -425,13 +391,10 @@ export async function atualizarStatusPagamento(
 
   if (!pagamento) {
 
-    const erro: any = new Error(
-      'Pagamento não encontrado.'
+    throw new AppError(
+      'Pagamento não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -444,13 +407,10 @@ export async function atualizarStatusPagamento(
     status !== 'aprovado'
   ) {
 
-    const erro: any = new Error(
-      'Um pagamento aprovado não pode ter o status alterado.'
+    throw new AppError(
+      'Um pagamento aprovado não pode ter o status alterado.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -463,13 +423,10 @@ export async function atualizarStatusPagamento(
     status !== 'cancelado'
   ) {
 
-    const erro: any = new Error(
-      'Um pagamento cancelado não pode ser alterado.'
+    throw new AppError(
+      'Um pagamento cancelado não pode ser alterado.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -504,13 +461,10 @@ export async function cancelarPagamento(
 
   if (!Types.ObjectId.isValid(id)) {
 
-    const erro: any = new Error(
-      'ID do pagamento inválido.'
+    throw new AppError(
+      'ID do pagamento inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -527,13 +481,10 @@ export async function cancelarPagamento(
 
   if (!pagamento) {
 
-    const erro: any = new Error(
-      'Pagamento não encontrado.'
+    throw new AppError(
+      'Pagamento não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -545,13 +496,10 @@ export async function cancelarPagamento(
     pagamento.status === 'aprovado'
   ) {
 
-    const erro: any = new Error(
-      'Não é possível cancelar um pagamento aprovado.'
+    throw new AppError(
+      'Não é possível cancelar um pagamento aprovado.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -563,13 +511,10 @@ export async function cancelarPagamento(
     pagamento.status === 'cancelado'
   ) {
 
-    const erro: any = new Error(
-      'Este pagamento já está cancelado.'
+    throw new AppError(
+      'Este pagamento já está cancelado.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 

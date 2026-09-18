@@ -15,8 +15,13 @@ import {
 } from '../controller/UsuarioController';
 
 import { autenticar } from '../middleware/AuthMiddleware';
+
 import { permitirPerfis } from '../middleware/RoleMiddleware';
+
 import { permitirProprioOuAdmin } from '../middleware/OwnerOrAdmin';
+
+import { asyncHandler } from '../middleware/AsyncHandler';
+
 import { UserProfile } from '../model/usuario';
 
 const router = Router();
@@ -28,15 +33,14 @@ const router = Router();
 
 router.post(
   '/',
-  criarUsuario
+  asyncHandler(criarUsuario)
 );
 
-
 // ======================================================
-// POST /funcionarios
+// GET /users/funcionarios
 // LISTAR FUNCIONÁRIOS DA PRÓPRIA LOJA
 // LOJISTA OU ADMIN
-
+// ======================================================
 
 router.get(
   '/funcionarios',
@@ -45,9 +49,8 @@ router.get(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  listarFuncionariosDaLoja
+  asyncHandler(listarFuncionariosDaLoja)
 );
-
 
 // ======================================================
 // POST /users/lojista
@@ -56,9 +59,8 @@ router.get(
 
 router.post(
   '/lojista',
-  criarLogista
+  asyncHandler(criarLogista)
 );
-
 
 // ======================================================
 // POST /users/funcionario
@@ -70,9 +72,8 @@ router.post(
   '/funcionario',
   autenticar,
   permitirPerfis(UserProfile.ADMIN),
-  criarFuncionario
+  asyncHandler(criarFuncionario)
 );
-
 
 // ======================================================
 // POST /users/admin
@@ -84,9 +85,8 @@ router.post(
   '/admin',
   autenticar,
   permitirPerfis(UserProfile.ADMIN),
-  criarAdmin
+  asyncHandler(criarAdmin)
 );
-
 
 // ======================================================
 // PATCH /users/:id/funcionario
@@ -100,9 +100,8 @@ router.patch(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  contratarFuncionario
+  asyncHandler(contratarFuncionario)
 );
-
 
 // ======================================================
 // GET /users
@@ -114,9 +113,8 @@ router.get(
   '/',
   autenticar,
   permitirPerfis(UserProfile.ADMIN),
-  listarUsuarios
+  asyncHandler(listarUsuarios)
 );
-
 
 // ======================================================
 // GET /users/:id
@@ -127,9 +125,8 @@ router.get(
   '/:id',
   autenticar,
   permitirProprioOuAdmin,
-  buscarUsuario
+  asyncHandler(buscarUsuario)
 );
-
 
 // ======================================================
 // PUT /users/:id
@@ -140,9 +137,8 @@ router.put(
   '/:id',
   autenticar,
   permitirProprioOuAdmin,
-  atualizarUsuario
+  asyncHandler(atualizarUsuario)
 );
-
 
 // ======================================================
 // DELETE /users/:id
@@ -153,7 +149,7 @@ router.delete(
   '/:id',
   autenticar,
   permitirPerfis(UserProfile.ADMIN),
-  excluirUsuario
+  asyncHandler(excluirUsuario)
 );
 
 export default router;

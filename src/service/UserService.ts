@@ -1,53 +1,36 @@
+
 import bcrypt from 'bcrypt';
 import { Types } from 'mongoose';
 
 import {
-UserProfile
+  UserProfile
 } from '../model/usuario';
 
 import * as userRepository
-from '../repository/UserRepository';
+  from '../repository/UserRepository';
 
 import * as lojaRepository
-from '../repository/LojaRepository';
+  from '../repository/LojaRepository';
 
-// ======================================================
-// FUNÇÃO AUXILIAR DE ERRO
-// ======================================================
-
-function erro(
-mensagem: string,
-status = 400
-) {
-const error: any =
-new Error(mensagem);
-
-error.status = status;
-
-return error;
-}
+import { AppError } from '../error/AppError';
 
 // ======================================================
 // VALIDAR OBJECT ID
 // ======================================================
 
 function validarObjectId(
-id: string,
-nomeCampo: string
+  id: string,
+  nomeCampo: string
 ) {
-
-if (
-!id ||
-!Types.ObjectId.isValid(id)
-) {
-
-
-throw erro(
-  `${nomeCampo} inválido.`
-);
-
-
-}
+  if (
+    !id ||
+    !Types.ObjectId.isValid(id)
+  ) {
+    throw new AppError(
+      `${nomeCampo} inválido.`,
+      400
+    );
+  }
 }
 
 // ======================================================
@@ -55,53 +38,45 @@ throw erro(
 // ======================================================
 
 function validarEndereco(
-endereco: any
+  endereco: any
 ) {
+  if (endereco === undefined) {
+    return;
+  }
 
-if (endereco === undefined) {
-return;
-}
+  if (
+    !endereco ||
+    typeof endereco !== 'object'
+  ) {
+    throw new AppError(
+      'Endereço inválido.',
+      400
+    );
+  }
 
-if (
-!endereco ||
-typeof endereco !== 'object'
-) {
+  const camposObrigatorios = [
+    'cep',
+    'logradouro',
+    'numero',
+    'bairro',
+    'cidade',
+    'estado'
+  ];
 
-
-throw erro(
-  'Endereço inválido.'
-);
-
-
-}
-
-const camposObrigatorios = [
-'cep',
-'logradouro',
-'numero',
-'bairro',
-'cidade',
-'estado'
-];
-
-for (
-const campo of camposObrigatorios
-) {
-
-
-if (
-  !endereco[campo] ||
-  typeof endereco[campo] !== 'string' ||
-  !endereco[campo].trim()
-) {
-
-  throw erro(
-    `O campo ${campo} do endereço é obrigatório.`
-  );
-}
-
-
-}
+  for (
+    const campo of camposObrigatorios
+  ) {
+    if (
+      !endereco[campo] ||
+      typeof endereco[campo] !== 'string' ||
+      !endereco[campo].trim()
+    ) {
+      throw new AppError(
+        `O campo ${campo} do endereço é obrigatório.`,
+        400
+      );
+    }
+  }
 }
 
 // ======================================================
@@ -110,191 +85,154 @@ if (
 // ======================================================
 
 export async function criarUsuario(
-dados: any
+  dados: any
 ) {
+  const {
+    nome,
+    email,
+    senha,
+    perfil,
+    endereco,
+    lojaId
+  } = dados;
+
+  // ====================================================
+  // CAMPOS OBRIGATÓRIOS
+  // ====================================================
+
+  if (
+    !nome ||
+    typeof nome !== 'string' ||
+    !nome.trim()
+  ) {
+    throw new AppError(
+      'Nome é obrigatório.',
+      400
+    );
+  }
+
+  if (
+    !email ||
+    typeof email !== 'string' ||
+    !email.trim()
+  ) {
+    throw new AppError(
+      'Email é obrigatório.',
+      400
+    );
+  }
+
+  if (
+    !senha ||
+    typeof senha !== 'string'
+  ) {
+    throw new AppError(
+      'Senha é obrigatória.',
+      400
+    );
+  }
+
+  // ====================================================
+  // VALIDAR SENHA
+  // ====================================================
+
+  if (senha.length < 6) {
+    throw new AppError(
+      'A senha deve possuir pelo menos 6 caracteres.',
+      400
+    );
+  }
+
+  // ====================================================
+  // PERFIL
+  // ====================================================
+
+  const perfilFinal =
+    perfil || UserProfile.Cliente;
+
+  if (
+    !Object.values(UserProfile)
+      .includes(perfilFinal)
+  ) {
+    throw new AppError(
+      'Perfil de usuário inválido.',
+      400
+    );
+  }
+
+  // ====================================================
+  // REGRA DE SEGURANÇA
+  // ====================================================
+
+  if (
+    perfilFinal !== UserProfile.Cliente
+  ) {
+    throw new AppError(
+      'Novos usuários devem ser cadastrados como cliente.',
+      400
+    );
+  }
+
+  // ====================================================
+  // CLIENTE NÃO POSSUI LOJA
+  // ====================================================
+
+  if (lojaId) {
+    throw new AppError(
+      'Cliente não pode possuir lojaId.',
+      400
+    );
+  }
+
+  // ====================================================
+  // VALIDAR ENDEREÇO
+  // ====================================================
+
+  validarEndereco(endereco);
 
-const {
-nome,
-email,
-senha,
-perfil,
-endereco,
-lojaId
-} = dados;
+  // ====================================================
+  // VERIFICAR EMAIL
+  // ====================================================
 
-// ====================================================
-// CAMPOS OBRIGATÓRIOS
-// ====================================================
+  const usuarioExistente =
+    await userRepository.buscarUsuarioPorEmail(
+      email.toLowerCase().trim()
+    );
 
-if (
-!nome ||
-typeof nome !== 'string' ||
-!nome.trim()
-) {
+  if (usuarioExistente) {
+    throw new AppError(
+      'Este email já está cadastrado.',
+      409
+    );
+  }
 
+  // ====================================================
+  // CRIPTOGRAFAR SENHA
+  // ====================================================
 
-throw erro(
-  'Nome é obrigatório.'
-);
+  const senhaHash =
+    await bcrypt.hash(
+      senha,
+      10
+    );
 
+  // ====================================================
+  // CRIAR USUÁRIO
+  // ====================================================
 
-}
+  return await userRepository.criarUsuario({
+    nome: nome.trim(),
 
-if (
-!email ||
-typeof email !== 'string' ||
-!email.trim()
-) {
+    email:
+      email.toLowerCase().trim(),
 
+    senhaHash,
 
-throw erro(
-  'Email é obrigatório.'
-);
+    perfil:
+      UserProfile.Cliente,
 
-
-}
-
-if (
-!senha ||
-typeof senha !== 'string'
-) {
-
-
-throw erro(
-  'Senha é obrigatória.'
-);
-
-
-}
-
-// ====================================================
-// VALIDAR SENHA
-// ====================================================
-
-if (senha.length < 6) {
-
-
-throw erro(
-  'A senha deve possuir pelo menos 6 caracteres.'
-);
-
-
-}
-
-// ====================================================
-// PERFIL
-// ====================================================
-
-const perfilFinal =
-perfil || UserProfile.Cliente;
-
-if (
-!Object.values(UserProfile)
-.includes(perfilFinal)
-) {
-
-
-const error: any =
-  erro(
-    'Perfil de usuário inválido.'
-  );
-
-error.perfisPermitidos =
-  Object.values(UserProfile);
-
-throw error;
-
-
-}
-
-// ====================================================
-// REGRA DE SEGURANÇA
-// ====================================================
-
-
-
-if (
-perfilFinal !== UserProfile.Cliente
-) {
-
-
-throw erro(
-  'Novos usuários devem ser cadastrados como cliente.'
-);
-
-
-}
-
-// ====================================================
-// CLIENTE NÃO POSSUI LOJA
-// ====================================================
-
-if (lojaId) {
-
-
-throw erro(
-  'Cliente não pode possuir lojaId.'
-);
-
-
-}
-
-// ====================================================
-// VALIDAR ENDEREÇO
-// ====================================================
-
-validarEndereco(endereco);
-
-// ====================================================
-// VERIFICAR EMAIL
-// ====================================================
-
-const usuarioExistente =
-await userRepository.buscarUsuarioPorEmail(
-email.toLowerCase().trim()
-);
-
-if (usuarioExistente) {
-
-
-throw erro(
-  'Este email já está cadastrado.'
-);
-
-
-}
-
-// ====================================================
-// CRIPTOGRAFAR SENHA
-// ====================================================
-
-const senhaHash =
-await bcrypt.hash(
-senha,
-10
-);
-
-// ====================================================
-// CRIAR USUÁRIO
-// ====================================================
-
-return await userRepository.criarUsuario({
-
-
-nome:
-  nome.trim(),
-
-email:
-  email.toLowerCase().trim(),
-
-senhaHash,
-
-perfil:
-  UserProfile.Cliente,
-
-endereco
-
-});
+    endereco
+  });
 }
 
 // ======================================================
@@ -303,10 +241,8 @@ endereco
 // ======================================================
 
 export async function listarUsuarios() {
-
-return await userRepository
-.listarUsuarios();
-
+  return await userRepository
+    .listarUsuarios();
 }
 
 // ======================================================
@@ -315,30 +251,25 @@ return await userRepository
 // ======================================================
 
 export async function buscarUsuarioPorId(
-id: string
+  id: string
 ) {
+  validarObjectId(
+    id,
+    'ID do usuário'
+  );
 
-validarObjectId(
-id,
-'ID do usuário'
-);
+  const usuario =
+    await userRepository
+      .buscarUsuarioPorId(id);
 
-const usuario =
-await userRepository
-.buscarUsuarioPorId(id);
+  if (!usuario) {
+    throw new AppError(
+      'Usuário não encontrado.',
+      404
+    );
+  }
 
-if (!usuario) {
-
-
-throw erro(
-  'Usuário não encontrado.',
-  404
-);
-
-
-}
-
-return usuario;
+  return usuario;
 }
 
 // ======================================================
@@ -347,418 +278,337 @@ return usuario;
 // ======================================================
 
 export async function atualizarUsuario(
-id: string,
-dados: any
+  id: string,
+  dados: any
 ) {
-
-validarObjectId(
-id,
-'ID do usuário'
-);
-
-// ====================================================
-// BUSCAR USUÁRIO ATUAL
-// ====================================================
-
-const usuarioAtual =
-await userRepository
-.buscarUsuarioSemPopulate(id);
-
-if (!usuarioAtual) {
-
-
-throw erro(
-  'Usuário não encontrado.',
-  404
-);
-
-
-}
-
-const {
-nome,
-email,
-senha,
-perfil,
-endereco,
-lojaId
-} = dados;
-
-// ====================================================
-// VALIDAR NOME
-// ====================================================
-
-if (
-nome !== undefined &&
-(
-typeof nome !== 'string' ||
-!nome.trim()
-)
-) {
-
-
-throw erro(
-  'Nome inválido.'
-);
-
-
-}
-
-// ====================================================
-// VALIDAR EMAIL
-// ====================================================
-
-if (email !== undefined) {
-
-
-if (
-  typeof email !== 'string' ||
-  !email.trim()
-) {
-
-  throw erro(
-    'Email inválido.'
-  );
-}
-
-
-const emailNormalizado =
-  email.toLowerCase().trim();
-
-
-const usuarioComEmail =
-  await userRepository
-    .buscarUsuarioPorEmail(
-      emailNormalizado
-    );
-
-
-if (
-  usuarioComEmail &&
-  usuarioComEmail._id.toString() !==
-    usuarioAtual._id.toString()
-) {
-
-  throw erro(
-    'Este email já está cadastrado.'
-  );
-}
-
-
-}
-
-// ====================================================
-// VALIDAR ENDEREÇO
-// ====================================================
-
-validarEndereco(
-endereco
-);
-
-// ====================================================
-// DEFINIR PERFIL
-// ====================================================
-
-const perfilAtualizado =
-perfil ||
-usuarioAtual.perfil;
-
-if (
-!Object.values(UserProfile)
-.includes(perfilAtualizado)
-) {
-
-
-const error: any =
-  erro(
-    'Perfil de usuário inválido.'
-  );
-
-error.perfisPermitidos =
-  Object.values(UserProfile);
-
-throw error;
-
-
-}
-
-// ====================================================
-// LOJA
-// ====================================================
-
-let lojaParaSalvar:
-Types.ObjectId |
-undefined;
-
-// ====================================================
-// CLIENTE
-// ====================================================
-
-if (
-perfilAtualizado ===
-UserProfile.Cliente
-) {
-
-
-if (lojaId) {
-
-  throw erro(
-    'Cliente não pode possuir lojaId.'
-  );
-}
-
-
-lojaParaSalvar =
-  undefined;
-
-}
-
-// ====================================================
-// ADMIN
-// ====================================================
-
-else if (
-perfilAtualizado ===
-UserProfile.ADMIN
-) {
-
-
-if (lojaId) {
-
-  throw erro(
-    'Administrador não pode possuir lojaId.'
-  );
-}
-
-
-lojaParaSalvar =
-  undefined;
-
-
-}
-
-// ====================================================
-// FUNCIONÁRIO
-// ====================================================
-
-else if (
-perfilAtualizado ===
-UserProfile.Funcionario
-) {
-
-
-const lojaFinal =
-  lojaId ||
-  usuarioAtual.lojaId;
-
-
-if (!lojaFinal) {
-
-  throw erro(
-    'Funcionário precisa estar vinculado a uma loja.'
-  );
-}
-
-
-validarObjectId(
-  lojaFinal.toString(),
-  'lojaId'
-);
-
-
-const loja =
-  await lojaRepository
-    .buscarLojaPorIdSemPopulate(
-      lojaFinal.toString()
-    );
-
-
-if (!loja) {
-
-  throw erro(
-    'Loja não encontrada.',
-    404
-  );
-}
-
-
-lojaParaSalvar =
-  new Types.ObjectId(
-    lojaFinal.toString()
-  );
-
-
-}
-
-// ====================================================
-// LOJISTA
-// ====================================================
-
-else if (
-perfilAtualizado ===
-UserProfile.Logista
-) {
-
-
-/*
- * O lojista pode existir sem loja.
- */
-
-if (lojaId) {
-
   validarObjectId(
-    lojaId.toString(),
-    'lojaId'
+    id,
+    'ID do usuário'
   );
 
+  // ====================================================
+  // BUSCAR USUÁRIO ATUAL
+  // ====================================================
 
-  const loja =
-    await lojaRepository
-      .buscarLojaPorIdSemPopulate(
-        lojaId.toString()
-      );
+  const usuarioAtual =
+    await userRepository
+      .buscarUsuarioSemPopulate(id);
 
-
-  if (!loja) {
-
-    throw erro(
-      'Loja não encontrada.',
+  if (!usuarioAtual) {
+    throw new AppError(
+      'Usuário não encontrado.',
       404
     );
   }
 
+  const {
+    nome,
+    email,
+    senha,
+    perfil,
+    endereco,
+    lojaId
+  } = dados;
+
+  // ====================================================
+  // VALIDAR NOME
+  // ====================================================
 
   if (
-    loja.proprietarioId &&
-    loja.proprietarioId.toString() !==
-      usuarioAtual._id.toString()
+    nome !== undefined &&
+    (
+      typeof nome !== 'string' ||
+      !nome.trim()
+    )
   ) {
-
-    throw erro(
-      'Esta loja já pertence a outro proprietário.'
+    throw new AppError(
+      'Nome inválido.',
+      400
     );
   }
 
+  // ====================================================
+  // VALIDAR EMAIL
+  // ====================================================
 
-  lojaParaSalvar =
-    new Types.ObjectId(
-      lojaId.toString()
+  if (email !== undefined) {
+    if (
+      typeof email !== 'string' ||
+      !email.trim()
+    ) {
+      throw new AppError(
+        'Email inválido.',
+        400
+      );
+    }
+
+    const emailNormalizado =
+      email.toLowerCase().trim();
+
+    const usuarioComEmail =
+      await userRepository
+        .buscarUsuarioPorEmail(
+          emailNormalizado
+        );
+
+    if (
+      usuarioComEmail &&
+      usuarioComEmail._id.toString() !==
+        usuarioAtual._id.toString()
+    ) {
+      throw new AppError(
+        'Este email já está cadastrado.',
+        409
+      );
+    }
+  }
+
+  // ====================================================
+  // VALIDAR ENDEREÇO
+  // ====================================================
+
+  validarEndereco(
+    endereco
+  );
+
+  // ====================================================
+  // DEFINIR PERFIL
+  // ====================================================
+
+  const perfilAtualizado =
+    perfil ||
+    usuarioAtual.perfil;
+
+  if (
+    !Object.values(UserProfile)
+      .includes(perfilAtualizado)
+  ) {
+    throw new AppError(
+      'Perfil de usuário inválido.',
+      400
     );
-}
+  }
 
-else if (
-  usuarioAtual.lojaId
-) {
+  // ====================================================
+  // LOJA
+  // ====================================================
 
-  lojaParaSalvar =
-    usuarioAtual.lojaId;
-}
+  let lojaParaSalvar:
+    Types.ObjectId |
+    undefined;
 
+  // ====================================================
+  // CLIENTE
+  // ====================================================
 
-}
+  if (
+    perfilAtualizado ===
+    UserProfile.Cliente
+  ) {
+    if (lojaId) {
+      throw new AppError(
+        'Cliente não pode possuir lojaId.',
+        400
+      );
+    }
 
-// ====================================================
-// PREPARAR DADOS
-// ====================================================
+    lojaParaSalvar =
+      undefined;
+  }
 
-const dadosAtualizacao: any = {};
+  // ====================================================
+  // ADMIN
+  // ====================================================
 
-if (nome !== undefined) {
+  else if (
+    perfilAtualizado ===
+    UserProfile.ADMIN
+  ) {
+    if (lojaId) {
+      throw new AppError(
+        'Administrador não pode possuir lojaId.',
+        400
+      );
+    }
 
+    lojaParaSalvar =
+      undefined;
+  }
 
-dadosAtualizacao.nome =
-  nome.trim();
+  // ====================================================
+  // FUNCIONÁRIO
+  // ====================================================
 
+  else if (
+    perfilAtualizado ===
+    UserProfile.Funcionario
+  ) {
+    const lojaFinal =
+      lojaId ||
+      usuarioAtual.lojaId;
 
-}
+    if (!lojaFinal) {
+      throw new AppError(
+        'Funcionário precisa estar vinculado a uma loja.',
+        400
+      );
+    }
 
-if (email !== undefined) {
+    validarObjectId(
+      lojaFinal.toString(),
+      'lojaId'
+    );
 
+    const loja =
+      await lojaRepository
+        .buscarLojaPorIdSemPopulate(
+          lojaFinal.toString()
+        );
 
-dadosAtualizacao.email =
-  email.toLowerCase().trim();
+    if (!loja) {
+      throw new AppError(
+        'Loja não encontrada.',
+        404
+      );
+    }
 
+    lojaParaSalvar =
+      new Types.ObjectId(
+        lojaFinal.toString()
+      );
+  }
 
-}
+  // ====================================================
+  // LOJISTA
+  // ====================================================
 
-if (endereco !== undefined) {
+  else if (
+    perfilAtualizado ===
+    UserProfile.Logista
+  ) {
+    /*
+     * O lojista pode existir sem loja.
+     */
 
+    if (lojaId) {
+      validarObjectId(
+        lojaId.toString(),
+        'lojaId'
+      );
 
-dadosAtualizacao.endereco =
-  endereco;
+      const loja =
+        await lojaRepository
+          .buscarLojaPorIdSemPopulate(
+            lojaId.toString()
+          );
 
+      if (!loja) {
+        throw new AppError(
+          'Loja não encontrada.',
+          404
+        );
+      }
 
-}
+      if (
+        loja.proprietarioId &&
+        loja.proprietarioId.toString() !==
+          usuarioAtual._id.toString()
+      ) {
+        throw new AppError(
+          'Esta loja já pertence a outro proprietário.',
+          403
+        );
+      }
 
-if (perfil !== undefined) {
+      lojaParaSalvar =
+        new Types.ObjectId(
+          lojaId.toString()
+        );
+    }
 
+    else if (
+      usuarioAtual.lojaId
+    ) {
+      lojaParaSalvar =
+        usuarioAtual.lojaId;
+    }
+  }
 
-dadosAtualizacao.perfil =
-  perfilAtualizado;
+  // ====================================================
+  // PREPARAR DADOS
+  // ====================================================
 
+  const dadosAtualizacao: any = {};
 
-}
+  if (nome !== undefined) {
+    dadosAtualizacao.nome =
+      nome.trim();
+  }
 
+  if (email !== undefined) {
+    dadosAtualizacao.email =
+      email.toLowerCase().trim();
+  }
 
+  if (endereco !== undefined) {
+    dadosAtualizacao.endereco =
+      endereco;
+  }
 
-if (
-perfilAtualizado ===
-UserProfile.Funcionario ||
-perfilAtualizado ===
-UserProfile.Logista
-) {
+  if (perfil !== undefined) {
+    dadosAtualizacao.perfil =
+      perfilAtualizado;
+  }
 
+  if (
+    perfilAtualizado ===
+      UserProfile.Funcionario ||
+    perfilAtualizado ===
+      UserProfile.Logista
+  ) {
+    if (lojaParaSalvar) {
+      dadosAtualizacao.lojaId =
+        lojaParaSalvar;
+    }
+  }
 
-dadosAtualizacao.lojaId =
-  lojaParaSalvar;
+  else {
+    dadosAtualizacao.$unset = {
+      lojaId: 1
+    };
+  }
 
-}
+  // ====================================================
+  // SENHA
+  // ====================================================
 
-else {
+  if (senha !== undefined) {
+    if (
+      typeof senha !== 'string' ||
+      senha.length < 6
+    ) {
+      throw new AppError(
+        'A senha deve possuir pelo menos 6 caracteres.',
+        400
+      );
+    }
 
+    dadosAtualizacao.senhaHash =
+      await bcrypt.hash(
+        senha,
+        10
+      );
+  }
 
-dadosAtualizacao.$unset = {
-  lojaId: 1
-};
+  // ====================================================
+  // ATUALIZAR
+  // ====================================================
 
-
-}
-
-// ====================================================
-// SENHA
-// ====================================================
-
-if (senha !== undefined) {
-
-
-if (
-  typeof senha !== 'string' ||
-  senha.length < 6
-) {
-
-  throw erro(
-    'A senha deve possuir pelo menos 6 caracteres.'
-  );
-}
-
-
-dadosAtualizacao.senhaHash =
-  await bcrypt.hash(
-    senha,
-    10
-  );
-
-}
-
-// ====================================================
-// ATUALIZAR
-// ====================================================
-
-return await userRepository
-.atualizarUsuario(
-id,
-dadosAtualizacao
-);
+  return await userRepository
+    .atualizarUsuario(
+      id,
+      dadosAtualizacao
+    );
 }
 
 // ======================================================
@@ -767,55 +617,49 @@ dadosAtualizacao
 // ======================================================
 
 export async function excluirUsuario(
-id: string
+  id: string
 ) {
+  validarObjectId(
+    id,
+    'ID do usuário'
+  );
 
-validarObjectId(
-id,
-'ID do usuário'
-);
+  // ====================================================
+  // BUSCAR USUÁRIO
+  // ====================================================
 
-// ====================================================
-// BUSCAR USUÁRIO
-// ====================================================
+  const usuario =
+    await userRepository
+      .buscarUsuarioSemPopulate(id);
 
-const usuario =
-await userRepository
-.buscarUsuarioSemPopulate(id);
+  if (!usuario) {
+    throw new AppError(
+      'Usuário não encontrado.',
+      404
+    );
+  }
 
-if (!usuario) {
+  // ====================================================
+  // VERIFICAR SE POSSUI LOJA
+  // ====================================================
 
+  const loja =
+    await lojaRepository
+      .buscarLojaDoProprietario(id);
 
-throw erro(
-  'Usuário não encontrado.',
-  404
-);
+  if (loja) {
+    throw new AppError(
+      'Não é possível excluir um usuário que possui uma loja.',
+      400
+    );
+  }
 
+  // ====================================================
+  // EXCLUIR
+  // ====================================================
 
-}
-
-// ====================================================
-// VERIFICAR SE POSSUI LOJA
-// ====================================================
-
-const loja =
-await lojaRepository
-.buscarLojaDoProprietario(id);
-
-if (loja) {
-throw erro(
-  'Não é possível excluir um usuário que possui uma loja.'
-);
-
-
-}
-
-// ====================================================
-// EXCLUIR
-// ====================================================
-
-return await userRepository
-.excluirUsuario(id);
+  return await userRepository
+    .excluirUsuario(id);
 }
 
 // ======================================================
@@ -824,224 +668,184 @@ return await userRepository
 // ======================================================
 
 export async function contratarClienteComoFuncionario(
-clienteId: string,
-solicitanteId: string,
-lojaIdInformada?: string
+  clienteId: string,
+  solicitanteId: string,
+  lojaIdInformada?: string
 ) {
-
-validarObjectId(
-clienteId,
-'clienteId'
-);
-
-validarObjectId(
-solicitanteId,
-'solicitanteId'
-);
-
-// ====================================================
-// BUSCAR SOLICITANTE
-// ====================================================
-
-const solicitante =
-await userRepository
-.buscarUsuarioSemPopulate(
-solicitanteId
-);
-
-if (!solicitante) {
-
-
-throw erro(
-  'Usuário que está realizando a contratação não foi encontrado.',
-  404
-);
-
-
-}
-
-// ====================================================
-// BUSCAR CLIENTE
-// ====================================================
-
-const cliente =
-await userRepository
-.buscarUsuarioSemPopulate(
-clienteId
-);
-
-if (!cliente) {
-
-
-throw erro(
-  'Cliente não encontrado.',
-  404
-);
-
-
-}
-
-// ====================================================
-// SOMENTE CLIENTE PODE SER CONTRATADO
-// ====================================================
-
-if (
-cliente.perfil !==
-UserProfile.Cliente
-) {
-
-
-throw erro(
-  'Somente usuários com perfil cliente podem ser contratados como funcionário.'
-);
-
-
-}
-
-// ====================================================
-// DEFINIR LOJA
-// ====================================================
-
-let lojaId: string;
-
-// ====================================================
-// LOJISTA
-// ====================================================
-
-if (
-solicitante.perfil ===
-UserProfile.Logista
-) {
-
-
-if (
-  !solicitante.lojaId
-) {
-
-  throw erro(
-    'O lojista não possui uma loja vinculada.'
+  validarObjectId(
+    clienteId,
+    'clienteId'
   );
-}
 
-
-lojaId =
-  solicitante.lojaId.toString();
-
-
-}
-
-// ====================================================
-// ADMIN
-// ====================================================
-
-else if (
-solicitante.perfil ===
-UserProfile.ADMIN
-) {
-
-
-if (!lojaIdInformada) {
-
-  throw erro(
-    'O administrador precisa informar o lojaId.'
+  validarObjectId(
+    solicitanteId,
+    'solicitanteId'
   );
-}
 
+  // ====================================================
+  // BUSCAR SOLICITANTE
+  // ====================================================
 
-validarObjectId(
-  lojaIdInformada,
-  'lojaId'
-);
+  const solicitante =
+    await userRepository
+      .buscarUsuarioSemPopulate(
+        solicitanteId
+      );
 
-
-lojaId =
-  lojaIdInformada;
-
-
-}
-
-// ====================================================
-// OUTROS PERFIS
-// ====================================================
-
-else {
-
-
-throw erro(
-  'Você não possui permissão para contratar funcionários.',
-  403
-);
-
-
-}
-
-// ====================================================
-// BUSCAR LOJA
-// ====================================================
-
-const loja =
-await lojaRepository
-.buscarLojaPorIdSemPopulate(
-lojaId
-);
-
-if (!loja) {
-
-
-throw erro(
-  'Loja não encontrada.',
-  404
-);
-
-
-}
-
-// ====================================================
-// LOJISTA SÓ PODE CONTRATAR NA PRÓPRIA LOJA
-// ====================================================
-
-if (
-solicitante.perfil ===
-UserProfile.Logista
-) {
-
-
-const proprietarioId =
-  loja.proprietarioId?.toString();
-
-
-if (
-  proprietarioId !==
-  solicitante._id.toString()
-) {
-
-  throw erro(
-    'Você só pode contratar funcionários para sua própria loja.',
-    403
-  );
-}
-
-
-}
-
-// ====================================================
-// TRANSFORMAR CLIENTE EM FUNCIONÁRIO
-// ====================================================
-
-return await userRepository
-.atualizarUsuario(
-clienteId,
-{
-perfil:
-UserProfile.Funcionario,
-
-
-    lojaId:
-      loja._id
+  if (!solicitante) {
+    throw new AppError(
+      'Usuário que está realizando a contratação não foi encontrado.',
+      404
+    );
   }
-);
 
+  // ====================================================
+  // BUSCAR CLIENTE
+  // ====================================================
 
+  const cliente =
+    await userRepository
+      .buscarUsuarioSemPopulate(
+        clienteId
+      );
+
+  if (!cliente) {
+    throw new AppError(
+      'Cliente não encontrado.',
+      404
+    );
+  }
+
+  // ====================================================
+  // SOMENTE CLIENTE PODE SER CONTRATADO
+  // ====================================================
+
+  if (
+    cliente.perfil !==
+    UserProfile.Cliente
+  ) {
+    throw new AppError(
+      'Somente usuários com perfil cliente podem ser contratados como funcionário.',
+      400
+    );
+  }
+
+  // ====================================================
+  // DEFINIR LOJA
+  // ====================================================
+
+  let lojaId: string;
+
+  // ====================================================
+  // LOJISTA
+  // ====================================================
+
+  if (
+    solicitante.perfil ===
+    UserProfile.Logista
+  ) {
+    if (
+      !solicitante.lojaId
+    ) {
+      throw new AppError(
+        'O lojista não possui uma loja vinculada.',
+        400
+      );
+    }
+
+    lojaId =
+      solicitante.lojaId.toString();
+  }
+
+  // ====================================================
+  // ADMIN
+  // ====================================================
+
+  else if (
+    solicitante.perfil ===
+    UserProfile.ADMIN
+  ) {
+    if (!lojaIdInformada) {
+      throw new AppError(
+        'O administrador precisa informar o lojaId.',
+        400
+      );
+    }
+
+    validarObjectId(
+      lojaIdInformada,
+      'lojaId'
+    );
+
+    lojaId =
+      lojaIdInformada;
+  }
+
+  // ====================================================
+  // OUTROS PERFIS
+  // ====================================================
+
+  else {
+    throw new AppError(
+      'Você não possui permissão para contratar funcionários.',
+      403
+    );
+  }
+
+  // ====================================================
+  // BUSCAR LOJA
+  // ====================================================
+
+  const loja =
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        lojaId
+      );
+
+  if (!loja) {
+    throw new AppError(
+      'Loja não encontrada.',
+      404
+    );
+  }
+
+  // ====================================================
+  // LOJISTA SÓ PODE CONTRATAR NA PRÓPRIA LOJA
+  // ====================================================
+
+  if (
+    solicitante.perfil ===
+    UserProfile.Logista
+  ) {
+    const proprietarioId =
+      loja.proprietarioId?.toString();
+
+    if (
+      proprietarioId !==
+      solicitante._id.toString()
+    ) {
+      throw new AppError(
+        'Você só pode contratar funcionários para sua própria loja.',
+        403
+      );
+    }
+  }
+
+  // ====================================================
+  // TRANSFORMAR CLIENTE EM FUNCIONÁRIO
+  // ====================================================
+
+  return await userRepository
+    .atualizarUsuario(
+      clienteId,
+      {
+        perfil:
+          UserProfile.Funcionario,
+
+        lojaId:
+          loja._id
+      }
+    );
 }
 
 // ======================================================
@@ -1050,33 +854,29 @@ UserProfile.Funcionario,
 // ======================================================
 
 export async function listarFuncionariosDaLoja(
-lojaId: string
+  lojaId: string
 ) {
+  validarObjectId(
+    lojaId,
+    'lojaId'
+  );
 
-validarObjectId(
-lojaId,
-'lojaId'
-);
+  const loja =
+    await lojaRepository
+      .buscarLojaPorIdSemPopulate(
+        lojaId
+      );
 
-const loja =
-await lojaRepository
-.buscarLojaPorIdSemPopulate(
-lojaId
-);
+  if (!loja) {
+    throw new AppError(
+      'Loja não encontrada.',
+      404
+    );
+  }
 
-if (!loja) {
-
-
-throw erro(
-  'Loja não encontrada.',
-  404
-);
-
-
+  return await userRepository
+    .listarFuncionariosDaLoja(
+      lojaId
+    );
 }
 
-return await userRepository
-.listarFuncionariosDaLoja(
-lojaId
-);
-}

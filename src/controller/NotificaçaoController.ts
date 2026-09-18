@@ -6,7 +6,6 @@ import * as notificacaoService
 
 import { AuthRequest } from '../types/AuthRequest';
 
-
 // =====================================================
 // CRIAR
 // =====================================================
@@ -16,57 +15,25 @@ export async function criarNotificacao(
   res: Response
 ) {
 
-  try {
+  const notificacao =
+    await notificacaoService.criarNotificacao({
 
-    const notificacao =
-      await notificacaoService.criarNotificacao({
+      ...req.body,
 
-        ...req.body,
-
-        // Remetente vem do usuário autenticado
-        remetenteId: req.usuario!.id
-
-      });
-
-
-    return res.status(201).json({
-
-      mensagem:
-        'Notificação criada com sucesso.',
-
-      notificacao
+      // Remetente vem do usuário autenticado
+      remetenteId: req.usuario!.id
 
     });
 
-  } catch (error: any) {
+  return res.status(201).json({
 
-    console.error(
-      'Erro ao criar notificação:',
-      error
-    );
+    mensagem:
+      'Notificação criada com sucesso.',
 
+    notificacao
 
-    return res.status(
-      error.status || 500
-    ).json({
-
-      mensagem:
-        error.message ||
-        'Erro interno ao criar notificação.',
-
-      ...(error.tiposPermitidos && {
-
-        tiposPermitidos:
-          error.tiposPermitidos
-
-      })
-
-    });
-
-  }
-
+  });
 }
-
 
 // =====================================================
 // LISTAR TODAS
@@ -77,39 +44,14 @@ export async function listarNotificacoes(
   res: Response
 ) {
 
-  try {
+  const notificacoes =
+    await notificacaoService
+      .listarNotificacoes();
 
-    const notificacoes =
-      await notificacaoService
-        .listarNotificacoes();
-
-
-    return res.status(200).json(
-      notificacoes
-    );
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao buscar notificações:',
-      error
-    );
-
-
-    return res.status(
-      error.status || 500
-    ).json({
-
-      mensagem:
-        error.message ||
-        'Erro interno ao buscar notificações.'
-
-    });
-
-  }
-
+  return res.status(200).json(
+    notificacoes
+  );
 }
-
 
 // =====================================================
 // BUSCAR POR ID
@@ -120,41 +62,16 @@ export async function buscarNotificacaoPorId(
   res: Response
 ) {
 
-  try {
+  const notificacao =
+    await notificacaoService
+      .buscarNotificacaoPorId(
+        String(req.params.id)
+      );
 
-    const notificacao =
-      await notificacaoService
-        .buscarNotificacaoPorId(
-          String(req.params.id)
-        );
-
-
-    return res.status(200).json(
-      notificacao
-    );
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao buscar notificação:',
-      error
-    );
-
-
-    return res.status(
-      error.status || 500
-    ).json({
-
-      mensagem:
-        error.message ||
-        'Não foi possível buscar a notificação.'
-
-    });
-
-  }
-
+  return res.status(200).json(
+    notificacao
+  );
 }
-
 
 // =====================================================
 // LISTAR MINHAS NOTIFICAÇÕES
@@ -165,46 +82,20 @@ export async function listarNotificacoesPorUsuario(
   res: Response
 ) {
 
-  try {
+  // O usuário vem do JWT
+  const usuarioId =
+    req.usuario!.id;
 
-    // O usuário vem do JWT
-    const usuarioId =
-      req.usuario!.id;
+  const resultado =
+    await notificacaoService
+      .listarNotificacoesPorUsuario(
+        usuarioId
+      );
 
-
-    const resultado =
-      await notificacaoService
-        .listarNotificacoesPorUsuario(
-          usuarioId
-        );
-
-
-    return res.status(200).json(
-      resultado
-    );
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao buscar notificações do usuário:',
-      error
-    );
-
-
-    return res.status(
-      error.status || 500
-    ).json({
-
-      mensagem:
-        error.message ||
-        'Não foi possível buscar as notificações.'
-
-    });
-
-  }
-
+  return res.status(200).json(
+    resultado
+  );
 }
-
 
 // =====================================================
 // MARCAR COMO LIDA / NÃO LIDA
@@ -215,52 +106,27 @@ export async function atualizarLeitura(
   res: Response
 ) {
 
-  try {
+  const notificacao =
+    await notificacaoService
+      .atualizarLeitura(
 
-    const notificacao =
-      await notificacaoService
-        .atualizarLeitura(
+        String(req.params.id),
 
-          String(req.params.id),
-
-          req.body.lida
-
-        );
-
-
-    return res.status(200).json({
-
-      mensagem:
         req.body.lida
-          ? 'Notificação marcada como lida.'
-          : 'Notificação marcada como não lida.',
 
-      notificacao
+      );
 
-    });
+  return res.status(200).json({
 
-  } catch (error: any) {
+    mensagem:
+      req.body.lida
+        ? 'Notificação marcada como lida.'
+        : 'Notificação marcada como não lida.',
 
-    console.error(
-      'Erro ao atualizar notificação:',
-      error
-    );
+    notificacao
 
-
-    return res.status(
-      error.status || 500
-    ).json({
-
-      mensagem:
-        error.message ||
-        'Erro interno ao atualizar notificação.'
-
-    });
-
-  }
-
+  });
 }
-
 
 // =====================================================
 // MARCAR TODAS COMO LIDAS
@@ -271,52 +137,26 @@ export async function marcarTodasComoLidas(
   res: Response
 ) {
 
-  try {
+  // O usuário vem do JWT
+  const usuarioId =
+    req.usuario!.id;
 
-    // O usuário vem do JWT
-    const usuarioId =
-      req.usuario!.id;
+  const resultado =
+    await notificacaoService
+      .marcarTodasComoLidas(
+        usuarioId
+      );
 
+  return res.status(200).json({
 
-    const resultado =
-      await notificacaoService
-        .marcarTodasComoLidas(
-          usuarioId
-        );
+    mensagem:
+      'Todas as notificações foram marcadas como lidas.',
 
+    notificacoesAtualizadas:
+      resultado.notificacoesAtualizadas
 
-    return res.status(200).json({
-
-      mensagem:
-        'Todas as notificações foram marcadas como lidas.',
-
-      notificacoesAtualizadas:
-        resultado.notificacoesAtualizadas
-
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao marcar notificações como lidas:',
-      error
-    );
-
-
-    return res.status(
-      error.status || 500
-    ).json({
-
-      mensagem:
-        error.message ||
-        'Erro interno ao marcar notificações como lidas.'
-
-    });
-
-  }
-
+  });
 }
-
 
 // =====================================================
 // EXCLUIR
@@ -327,40 +167,16 @@ export async function excluirNotificacao(
   res: Response
 ) {
 
-  try {
-
-    await notificacaoService
-      .excluirNotificacao(
-        String(req.params.id)
-      );
-
-
-    return res.status(200).json({
-
-      mensagem:
-        'Notificação excluída com sucesso.'
-
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao excluir notificação:',
-      error
+  await notificacaoService
+    .excluirNotificacao(
+      String(req.params.id)
     );
 
+  return res.status(200).json({
 
-    return res.status(
-      error.status || 500
-    ).json({
+    mensagem:
+      'Notificação excluída com sucesso.'
 
-      mensagem:
-        error.message ||
-        'Não foi possível excluir a notificação.'
-
-    });
-
-  }
-
+  });
 }
 

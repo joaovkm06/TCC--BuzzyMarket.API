@@ -4,6 +4,8 @@ import { Types } from 'mongoose';
 import * as produtoRepository from '../repository/ProdutoRepository';
 import * as lojaRepository from '../repository/LojaRepository';
 
+import { AppError } from '../error/AppError';
+
 
 // ==========================================
 // CRIAR PRODUTO
@@ -34,24 +36,21 @@ export async function criarProduto(
     !categoria ||
     preco === undefined
   ) {
-    const erro: any = new Error(
-      'lojaId, nome, categoria e preco são obrigatórios.'
+    throw new AppError(
+      'lojaId, nome, categoria e preco são obrigatórios.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
-  if (typeof nome !== 'string' || !nome.trim()) {
-    const erro: any = new Error(
-      'O nome do produto não pode ser vazio.'
+  if (
+    typeof nome !== 'string' ||
+    !nome.trim()
+  ) {
+    throw new AppError(
+      'O nome do produto não pode ser vazio.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -59,13 +58,10 @@ export async function criarProduto(
     typeof categoria !== 'string' ||
     !categoria.trim()
   ) {
-    const erro: any = new Error(
-      'A categoria do produto não pode ser vazia.'
+    throw new AppError(
+      'A categoria do produto não pode ser vazia.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -73,13 +69,10 @@ export async function criarProduto(
     typeof preco !== 'number' ||
     preco < 0
   ) {
-    const erro: any = new Error(
-      'O preço deve ser um número maior ou igual a zero.'
+    throw new AppError(
+      'O preço deve ser um número maior ou igual a zero.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -90,13 +83,10 @@ export async function criarProduto(
       estoque < 0
     )
   ) {
-    const erro: any = new Error(
-      'O estoque deve ser um número maior ou igual a zero.'
+    throw new AppError(
+      'O estoque deve ser um número maior ou igual a zero.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -104,13 +94,10 @@ export async function criarProduto(
     ativo !== undefined &&
     typeof ativo !== 'boolean'
   ) {
-    const erro: any = new Error(
-      'O campo ativo deve ser true ou false.'
+    throw new AppError(
+      'O campo ativo deve ser true ou false.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -119,13 +106,10 @@ export async function criarProduto(
   // ==========================================
 
   if (!Types.ObjectId.isValid(lojaId)) {
-    const erro: any = new Error(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -139,13 +123,10 @@ export async function criarProduto(
     );
 
   if (!loja) {
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw new AppError(
+      'Loja não encontrada.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -154,13 +135,10 @@ export async function criarProduto(
   // ==========================================
 
   if (loja.status === 'bloqueada') {
-    const erro: any = new Error(
-      'Não é possível cadastrar produtos em uma loja bloqueada.'
+    throw new AppError(
+      'Não é possível cadastrar produtos em uma loja bloqueada.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -213,14 +191,12 @@ export async function listarProdutos() {
 export async function buscarProdutoPorId(
   id: string
 ) {
+
   if (!Types.ObjectId.isValid(id)) {
-    const erro: any = new Error(
-      'ID do produto inválido.'
+    throw new AppError(
+      'ID do produto inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -228,14 +204,12 @@ export async function buscarProdutoPorId(
     await produtoRepository.buscarProdutoPorId(id);
 
   if (!produto) {
-    const erro: any = new Error(
-      'Produto não encontrado.'
+    throw new AppError(
+      'Produto não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
+
 
   return produto;
 }
@@ -248,14 +222,12 @@ export async function buscarProdutoPorId(
 export async function listarProdutosPorLoja(
   lojaId: string
 ) {
+
   if (!Types.ObjectId.isValid(lojaId)) {
-    const erro: any = new Error(
-      'ID da loja inválido.'
+    throw new AppError(
+      'ID da loja inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -265,13 +237,10 @@ export async function listarProdutosPorLoja(
     );
 
   if (!loja) {
-    const erro: any = new Error(
-      'Loja não encontrada.'
+    throw new AppError(
+      'Loja não encontrada.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -302,14 +271,12 @@ export async function atualizarProduto(
   id: string,
   dados: any
 ) {
+
   if (!Types.ObjectId.isValid(id)) {
-    const erro: any = new Error(
-      'ID do produto inválido.'
+    throw new AppError(
+      'ID do produto inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -320,13 +287,10 @@ export async function atualizarProduto(
 
 
   if (!produto) {
-    const erro: any = new Error(
-      'Produto não encontrado.'
+    throw new AppError(
+      'Produto não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -346,17 +310,15 @@ export async function atualizarProduto(
   // ==========================================
 
   if (nome !== undefined) {
+
     if (
       typeof nome !== 'string' ||
       !nome.trim()
     ) {
-      const erro: any = new Error(
-        'O nome do produto não pode ser vazio.'
+      throw new AppError(
+        'O nome do produto não pode ser vazio.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
     produto.nome = nome.trim();
@@ -368,16 +330,14 @@ export async function atualizarProduto(
   // ==========================================
 
   if (descricao !== undefined) {
+
     if (
       typeof descricao !== 'string'
     ) {
-      const erro: any = new Error(
-        'A descrição deve ser um texto.'
+      throw new AppError(
+        'A descrição deve ser um texto.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
     produto.descricao = descricao.trim();
@@ -389,17 +349,15 @@ export async function atualizarProduto(
   // ==========================================
 
   if (categoria !== undefined) {
+
     if (
       typeof categoria !== 'string' ||
       !categoria.trim()
     ) {
-      const erro: any = new Error(
-        'A categoria do produto não pode ser vazia.'
+      throw new AppError(
+        'A categoria do produto não pode ser vazia.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
     produto.categoria = categoria.trim();
@@ -411,17 +369,15 @@ export async function atualizarProduto(
   // ==========================================
 
   if (preco !== undefined) {
+
     if (
       typeof preco !== 'number' ||
       preco < 0
     ) {
-      const erro: any = new Error(
-        'O preço deve ser um número maior ou igual a zero.'
+      throw new AppError(
+        'O preço deve ser um número maior ou igual a zero.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
     produto.preco = preco;
@@ -433,17 +389,15 @@ export async function atualizarProduto(
   // ==========================================
 
   if (estoque !== undefined) {
+
     if (
       typeof estoque !== 'number' ||
       estoque < 0
     ) {
-      const erro: any = new Error(
-        'O estoque deve ser um número maior ou igual a zero.'
+      throw new AppError(
+        'O estoque deve ser um número maior ou igual a zero.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
     produto.estoque = estoque;
@@ -455,16 +409,14 @@ export async function atualizarProduto(
   // ==========================================
 
   if (imagem !== undefined) {
+
     if (
       typeof imagem !== 'string'
     ) {
-      const erro: any = new Error(
-        'A imagem deve ser um texto.'
+      throw new AppError(
+        'A imagem deve ser um texto.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
     produto.imagem = imagem.trim();
@@ -476,16 +428,14 @@ export async function atualizarProduto(
   // ==========================================
 
   if (ativo !== undefined) {
+
     if (
       typeof ativo !== 'boolean'
     ) {
-      const erro: any = new Error(
-        'O campo ativo deve ser true ou false.'
+      throw new AppError(
+        'O campo ativo deve ser true ou false.',
+        400
       );
-
-      erro.status = 400;
-
-      throw erro;
     }
 
     produto.ativo = ativo;
@@ -509,25 +459,20 @@ export async function atualizarEstoque(
   id: string,
   estoque: any
 ) {
+
   if (!Types.ObjectId.isValid(id)) {
-    const erro: any = new Error(
-      'ID do produto inválido.'
+    throw new AppError(
+      'ID do produto inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
   if (estoque === undefined) {
-    const erro: any = new Error(
-      'Informe o novo estoque.'
+    throw new AppError(
+      'Informe o novo estoque.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -535,13 +480,10 @@ export async function atualizarEstoque(
     typeof estoque !== 'number' ||
     estoque < 0
   ) {
-    const erro: any = new Error(
-      'O estoque deve ser um número maior ou igual a zero.'
+    throw new AppError(
+      'O estoque deve ser um número maior ou igual a zero.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -552,13 +494,10 @@ export async function atualizarEstoque(
 
 
   if (!produto) {
-    const erro: any = new Error(
-      'Produto não encontrado.'
+    throw new AppError(
+      'Produto não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -583,36 +522,28 @@ export async function atualizarAtivo(
   id: string,
   ativo: any
 ) {
+
   if (!Types.ObjectId.isValid(id)) {
-    const erro: any = new Error(
-      'ID do produto inválido.'
+    throw new AppError(
+      'ID do produto inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
   if (ativo === undefined) {
-    const erro: any = new Error(
-      'Informe se o produto está ativo ou não.'
+    throw new AppError(
+      'Informe se o produto está ativo ou não.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
   if (typeof ativo !== 'boolean') {
-    const erro: any = new Error(
-      'O campo ativo deve ser true ou false.'
+    throw new AppError(
+      'O campo ativo deve ser true ou false.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -623,13 +554,10 @@ export async function atualizarAtivo(
 
 
   if (!produto) {
-    const erro: any = new Error(
-      'Produto não encontrado.'
+    throw new AppError(
+      'Produto não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 
@@ -653,14 +581,12 @@ export async function atualizarAtivo(
 export async function excluirProduto(
   id: string
 ) {
+
   if (!Types.ObjectId.isValid(id)) {
-    const erro: any = new Error(
-      'ID do produto inválido.'
+    throw new AppError(
+      'ID do produto inválido.',
+      400
     );
-
-    erro.status = 400;
-
-    throw erro;
   }
 
 
@@ -671,13 +597,10 @@ export async function excluirProduto(
 
 
   if (!produto) {
-    const erro: any = new Error(
-      'Produto não encontrado.'
+    throw new AppError(
+      'Produto não encontrado.',
+      404
     );
-
-    erro.status = 404;
-
-    throw erro;
   }
 
 

@@ -2,8 +2,12 @@
 import { Request, Response } from 'express';
 
 import * as userService from '../service/UserService';
+
 import { UserProfile } from '../model/usuario';
+
 import { AuthRequest } from '../types/AuthRequest';
+
+import { AppError } from '../error/AppError';
 
 // ======================================================
 // POST /users
@@ -14,45 +18,22 @@ export async function criarUsuario(
   req: Request,
   res: Response
 ) {
-  try {
 
-    // IMPORTANTE:
-    // A rota pública SEMPRE cria cliente.
-    // Mesmo que alguém envie perfil: "admin",
-    // o servidor vai ignorar e usar cliente.
+  // A rota pública SEMPRE cria cliente.
+  // Mesmo que alguém envie perfil: "admin",
+  // o servidor vai ignorar e usar cliente.
 
-    const usuario = await userService.criarUsuario({
+  const usuario =
+    await userService.criarUsuario({
       ...req.body,
       perfil: UserProfile.Cliente
     });
 
-    return res.status(201).json({
-      mensagem: 'Cliente criado com sucesso.',
-      usuario
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao criar usuário:',
-      error
-    );
-
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível criar o usuário.',
-
-      ...(error.perfisPermitidos && {
-        perfisPermitidos:
-          error.perfisPermitidos
-      })
-    });
-  }
+  return res.status(201).json({
+    mensagem: 'Cliente criado com sucesso.',
+    usuario
+  });
 }
-
 
 // ======================================================
 // POST /users/lojista
@@ -63,37 +44,20 @@ export async function criarLogista(
   req: Request,
   res: Response
 ) {
-  try {
 
-    // A rota força o perfil de lojista.
+  // A rota força o perfil de lojista.
 
-    const usuario = await userService.criarUsuario({
+  const usuario =
+    await userService.criarUsuario({
       ...req.body,
       perfil: UserProfile.Logista
     });
 
-    return res.status(201).json({
-      mensagem: 'Lojista criado com sucesso.',
-      usuario
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao criar lojista:',
-      error
-    );
-
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível criar o lojista.'
-    });
-  }
+  return res.status(201).json({
+    mensagem: 'Lojista criado com sucesso.',
+    usuario
+  });
 }
-
 
 // ======================================================
 // POST /users/funcionario
@@ -104,38 +68,20 @@ export async function criarFuncionario(
   req: Request,
   res: Response
 ) {
-  try {
 
-    // A rota força o perfil de funcionário.
+  // A rota força o perfil de funcionário.
 
-    const funcionario =
-      await userService.criarUsuario({
-        ...req.body,
-        perfil: UserProfile.Funcionario
-      });
-
-    return res.status(201).json({
-      mensagem: 'Funcionário criado com sucesso.',
-      usuario: funcionario
+  const funcionario =
+    await userService.criarUsuario({
+      ...req.body,
+      perfil: UserProfile.Funcionario
     });
 
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao criar funcionário:',
-      error
-    );
-
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível criar o funcionário.'
-    });
-  }
+  return res.status(201).json({
+    mensagem: 'Funcionário criado com sucesso.',
+    usuario: funcionario
+  });
 }
-
 
 // ======================================================
 // POST /users/admin
@@ -147,38 +93,20 @@ export async function criarAdmin(
   req: Request,
   res: Response
 ) {
-  try {
 
-    // A rota força o perfil de administrador.
+  // A rota força o perfil de administrador.
 
-    const admin =
-      await userService.criarUsuario({
-        ...req.body,
-        perfil: UserProfile.ADMIN
-      });
-
-    return res.status(201).json({
-      mensagem: 'Administrador criado com sucesso.',
-      usuario: admin
+  const admin =
+    await userService.criarUsuario({
+      ...req.body,
+      perfil: UserProfile.ADMIN
     });
 
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao criar administrador:',
-      error
-    );
-
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível criar o administrador.'
-    });
-  }
+  return res.status(201).json({
+    mensagem: 'Administrador criado com sucesso.',
+    usuario: admin
+  });
 }
-
 
 // ======================================================
 // GET /users
@@ -190,30 +118,14 @@ export async function listarUsuarios(
   req: Request,
   res: Response
 ) {
-  try {
 
-    const usuarios =
-      await userService.listarUsuarios();
+  const usuarios =
+    await userService.listarUsuarios();
 
-    return res.status(200).json(
-      usuarios
-    );
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao buscar usuários:',
-      error
-    );
-
-    return res.status(500).json({
-      mensagem:
-        'Não foi possível buscar os usuários.',
-      erro: error.message
-    });
-  }
+  return res.status(200).json(
+    usuarios
+  );
 }
-
 
 // ======================================================
 // GET /users/:id
@@ -224,157 +136,128 @@ export async function buscarUsuario(
   req: Request,
   res: Response
 ) {
-  try {
 
-    const usuario =
-      await userService.buscarUsuarioPorId(
-        String(req.params.id)
-      );
-
-    if (!usuario) {
-      return res.status(404).json({
-        mensagem:
-          'Usuário não encontrado.'
-      });
-    }
-
-    return res.status(200).json(
-      usuario
+  const usuario =
+    await userService.buscarUsuarioPorId(
+      String(req.params.id)
     );
 
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao buscar usuário:',
-      error
+  if (!usuario) {
+    throw new AppError(
+      'Usuário não encontrado.',
+      404
     );
-
-    return res.status(400).json({
-      mensagem:
-        'ID de usuário inválido.',
-      erro: error.message
-    });
   }
+
+  return res.status(200).json(
+    usuario
+  );
 }
+
+// ======================================================
+// PUT /users/:id
+// ATUALIZAR USUÁRIO
+// ======================================================
 
 export async function atualizarUsuario(
   req: AuthRequest,
   res: Response
 ) {
-  try {
 
-    if (!req.usuario) {
-      return res.status(401).json({
-        mensagem: 'Usuário não autenticado.'
-      });
-    }
+  // ====================================================
+  // USUÁRIO AUTENTICADO
+  // ====================================================
 
-    const usuarioId = String(req.params.id);
+  if (!req.usuario) {
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
 
-    const ehAdmin =
-      req.usuario.perfil === UserProfile.ADMIN;
+  const usuarioId =
+    String(req.params.id);
 
-    const ehProprioUsuario =
-      String(req.usuario.id) === usuarioId;
+  const ehAdmin =
+    req.usuario.perfil === UserProfile.ADMIN;
 
+  const ehProprioUsuario =
+    String(req.usuario.id) === usuarioId;
 
-    // ================================================
-    // SEGURANÇA
-    // ================================================
+  // ====================================================
+  // SEGURANÇA
+  // ====================================================
 
-    if (!ehAdmin && !ehProprioUsuario) {
-      return res.status(403).json({
-        mensagem:
-          'Você só pode atualizar seu próprio usuário.'
-      });
-    }
+  if (!ehAdmin && !ehProprioUsuario) {
+    throw new AppError(
+      'Você só pode atualizar seu próprio usuário.',
+      403
+    );
+  }
 
+  // ====================================================
+  // COPIA OS DADOS RECEBIDOS
+  // ====================================================
 
-    // ================================================
-    // COPIA OS DADOS RECEBIDOS
-    // ================================================
+  const dadosAtualizacao = {
+    ...req.body
+  };
 
-    const dadosAtualizacao = {
-      ...req.body
-    };
+  // ====================================================
+  // NÃO-ADMIN NÃO PODE ALTERAR PERFIL
+  // NEM LOJA
+  // ====================================================
 
+  if (!ehAdmin) {
 
-    // ================================================
-    // NÃO-ADMIN NÃO PODE ALTERAR PERFIL
-    // NEM LOJA
-    // ================================================
-
-    if (!ehAdmin) {
-
-      if (
-        Object.prototype.hasOwnProperty.call(
-          dadosAtualizacao,
-          'perfil'
-        )
-      ) {
-        return res.status(403).json({
-          mensagem:
-            'Você não pode alterar o perfil do usuário.'
-        });
-      }
-
-
-      if (
-        Object.prototype.hasOwnProperty.call(
-          dadosAtualizacao,
-          'lojaId'
-        )
-      ) {
-        return res.status(403).json({
-          mensagem:
-            'Você não pode alterar a loja vinculada ao usuário.'
-        });
-      }
-    }
-
-
-    // ================================================
-    // ATUALIZA
-    // ================================================
-
-    const usuario =
-      await userService.atualizarUsuario(
-        usuarioId,
-        dadosAtualizacao
+    if (
+      Object.prototype.hasOwnProperty.call(
+        dadosAtualizacao,
+        'perfil'
+      )
+    ) {
+      throw new AppError(
+        'Você não pode alterar o perfil do usuário.',
+        403
       );
-
-
-    if (!usuario) {
-      return res.status(404).json({
-        mensagem:
-          'Usuário não encontrado.'
-      });
     }
 
+    if (
+      Object.prototype.hasOwnProperty.call(
+        dadosAtualizacao,
+        'lojaId'
+      )
+    ) {
+      throw new AppError(
+        'Você não pode alterar a loja vinculada ao usuário.',
+        403
+      );
+    }
+  }
 
-    return res.status(200).json({
-      mensagem:
-        'Usuário atualizado com sucesso.',
-      usuario
-    });
+  // ====================================================
+  // ATUALIZA
+  // ====================================================
 
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao atualizar usuário:',
-      error
+  const usuario =
+    await userService.atualizarUsuario(
+      usuarioId,
+      dadosAtualizacao
     );
 
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível atualizar o usuário.'
-    });
+  if (!usuario) {
+    throw new AppError(
+      'Usuário não encontrado.',
+      404
+    );
   }
-}
 
+  return res.status(200).json({
+    mensagem:
+      'Usuário atualizado com sucesso.',
+    usuario
+  });
+}
 
 // ======================================================
 // GET /users/funcionarios
@@ -386,92 +269,88 @@ export async function listarFuncionariosDaLoja(
   req: AuthRequest,
   res: Response
 ) {
-  try {
-    if (!req.usuario) {
-      return res.status(401).json({
-        mensagem: 'Usuário não autenticado.'
-      });
+
+  // ====================================================
+  // USUÁRIO AUTENTICADO
+  // ====================================================
+
+  if (!req.usuario) {
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
+
+  let lojaId: string | undefined;
+
+  // ====================================================
+  // LOJISTA
+  // ====================================================
+
+  if (
+    req.usuario.perfil === UserProfile.Logista
+  ) {
+
+    if (!req.usuario.lojaId) {
+      throw new AppError(
+        'O lojista não possui uma loja vinculada.',
+        400
+      );
     }
 
-    let lojaId: string | undefined;
+    // O lojista SEMPRE consulta a própria loja.
+    lojaId =
+      String(req.usuario.lojaId);
+  }
 
-    // ==================================================
-    // LOJISTA
-    // ==================================================
+  // ====================================================
+  // ADMIN
+  // ====================================================
 
-    if (req.usuario.perfil === UserProfile.Logista) {
+  else if (
+    req.usuario.perfil === UserProfile.ADMIN
+  ) {
 
-      if (!req.usuario.lojaId) {
-        return res.status(400).json({
-          mensagem:
-            'O lojista não possui uma loja vinculada.'
-        });
-      }
-
-      // O lojista SEMPRE consulta a própria loja.
-      lojaId = String(req.usuario.lojaId);
-    }
-
-    // ==================================================
-    // ADMIN
-    // ==================================================
-
-    else if (req.usuario.perfil === UserProfile.ADMIN) {
-
-      // Admin pode informar a loja pela query string.
-      lojaId = req.query.lojaId
+    // Admin pode informar a loja pela query string.
+    lojaId =
+      req.query.lojaId
         ? String(req.query.lojaId)
         : undefined;
 
-      if (!lojaId) {
-        return res.status(400).json({
-          mensagem:
-            'O administrador precisa informar o lojaId.'
-        });
-      }
-    }
-
-    // ==================================================
-    // OUTROS PERFIS
-    // ==================================================
-
-    else {
-      return res.status(403).json({
-        mensagem:
-          'Você não possui permissão para listar funcionários.'
-      });
-    }
-
-    const funcionarios =
-      await userService.listarFuncionariosDaLoja(
-        lojaId
+    if (!lojaId) {
+      throw new AppError(
+        'O administrador precisa informar o lojaId.',
+        400
       );
+    }
+  }
 
-    return res.status(200).json({
-      lojaId,
-      quantidade: funcionarios.length,
-      funcionarios
-    });
+  // ====================================================
+  // OUTROS PERFIS
+  // ====================================================
 
-  } catch (error: any) {
+  else {
+    throw new AppError(
+      'Você não possui permissão para listar funcionários.',
+      403
+    );
+  }
 
-    console.error(
-      'Erro ao listar funcionários:',
-      error
+  // ====================================================
+  // BUSCAR FUNCIONÁRIOS
+  // ====================================================
+
+  const funcionarios =
+    await userService.listarFuncionariosDaLoja(
+      lojaId
     );
 
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível listar os funcionários.'
-    });
-  }
+  return res.status(200).json({
+    lojaId,
+    quantidade: funcionarios.length,
+    funcionarios
+  });
 }
-
-
-
 
 // ======================================================
 // DELETE /users/:id
@@ -483,48 +362,23 @@ export async function excluirUsuario(
   req: Request,
   res: Response
 ) {
-  try {
 
-    const usuario =
-      await userService.excluirUsuario(
-        String(req.params.id)
-      );
-
-    if (!usuario) {
-      return res.status(404).json({
-        mensagem:
-          'Usuário não encontrado.'
-      });
-    }
-
-    return res.status(200).json({
-      mensagem:
-        'Usuário excluído com sucesso.'
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao excluir usuário:',
-      error
+  const usuario =
+    await userService.excluirUsuario(
+      String(req.params.id)
     );
 
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível excluir o usuário.',
-
-      ...(error.motivo && {
-        motivo: error.motivo
-      }),
-
-      ...(error.lojaId && {
-        lojaId: error.lojaId
-      })
-    });
+  if (!usuario) {
+    throw new AppError(
+      'Usuário não encontrado.',
+      404
+    );
   }
+
+  return res.status(200).json({
+    mensagem:
+      'Usuário excluído com sucesso.'
+  });
 }
 
 // ======================================================
@@ -533,59 +387,47 @@ export async function excluirUsuario(
 // ======================================================
 
 export async function contratarFuncionario(
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) {
-  try {
 
-    // O middleware autenticar colocou o usuário
-    // logado dentro de req.usuario.
+  // ====================================================
+  // USUÁRIO AUTENTICADO
+  // ====================================================
 
-    const usuarioLogado = (req as any).usuario;
+  if (!req.usuario) {
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
 
-    if (!usuarioLogado) {
-      return res.status(401).json({
-        mensagem: 'Usuário não autenticado.'
-      });
-    }
+  // ====================================================
+  // LOJA
+  // ====================================================
 
+  // Se for ADMIN, pode informar lojaId.
+  // Se for LOJISTA, o Service ignora esse valor
+  // e usa a loja vinculada ao próprio lojista.
 
-    // Se for ADMIN, pode informar lojaId.
-    // Se for LOJISTA, o service ignora esse valor
-    // e usa a loja vinculada ao próprio lojista.
+  const lojaId =
+    req.body?.lojaId;
 
-    const lojaId =
-      req.body?.lojaId;
+  // ====================================================
+  // CONTRATAR
+  // ====================================================
 
-
-    const funcionario =
-      await userService.contratarClienteComoFuncionario(
-        String(req.params.id),
-        String(usuarioLogado.id),
-        lojaId
-      );
-
-
-    return res.status(200).json({
-      mensagem:
-        'Cliente contratado como funcionário com sucesso.',
-      usuario: funcionario
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao contratar funcionário:',
-      error
+  const funcionario =
+    await userService.contratarClienteComoFuncionario(
+      String(req.params.id),
+      String(req.usuario.id),
+      lojaId
     );
 
-    return res.status(
-      error.status || 400
-    ).json({
-      mensagem:
-        error.message ||
-        'Não foi possível contratar o funcionário.'
-    });
-  }
+  return res.status(200).json({
+    mensagem:
+      'Cliente contratado como funcionário com sucesso.',
+    usuario: funcionario
+  });
 }
 

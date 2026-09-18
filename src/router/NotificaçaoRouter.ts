@@ -12,14 +12,11 @@ import {
 } from '../controller/NotificaçaoController';
 
 import { autenticar } from '../middleware/AuthMiddleware';
-
 import { permitirPerfis } from '../middleware/RoleMiddleware';
-
+import { asyncHandler } from '../middleware/AsyncHandler';
 import { UserProfile } from '../model/usuario';
 
-
 const router = Router();
-
 
 // =====================================================
 // CRIAR NOTIFICAÇÃO
@@ -27,7 +24,6 @@ const router = Router();
 
 // Admin, lojista e funcionário podem enviar
 // notificações para usuários.
-
 router.post(
   '/',
   autenticar,
@@ -36,9 +32,8 @@ router.post(
     UserProfile.Logista,
     UserProfile.Funcionario
   ),
-  criarNotificacao
+  asyncHandler(criarNotificacao)
 );
-
 
 // =====================================================
 // LISTAR TODAS
@@ -46,16 +41,14 @@ router.post(
 
 // Apenas administrador pode visualizar
 // todas as notificações da plataforma.
-
 router.get(
   '/',
   autenticar,
   permitirPerfis(
     UserProfile.ADMIN
   ),
-  listarNotificacoes
+  asyncHandler(listarNotificacoes)
 );
-
 
 // =====================================================
 // LISTAR MINHAS NOTIFICAÇÕES
@@ -63,7 +56,6 @@ router.get(
 
 // O usuário é identificado pelo JWT.
 // Não usamos /usuario/:usuarioId.
-
 router.get(
   '/usuario',
   autenticar,
@@ -73,16 +65,14 @@ router.get(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  listarNotificacoesPorUsuario
+  asyncHandler(listarNotificacoesPorUsuario)
 );
-
 
 // =====================================================
 // MARCAR TODAS COMO LIDAS
 // =====================================================
 
 // O usuário é identificado pelo JWT.
-
 router.patch(
   '/usuario/lidas',
   autenticar,
@@ -92,9 +82,8 @@ router.patch(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  marcarTodasComoLidas
+  asyncHandler(marcarTodasComoLidas)
 );
-
 
 // =====================================================
 // BUSCAR POR ID
@@ -109,9 +98,8 @@ router.get(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  buscarNotificacaoPorId
+  asyncHandler(buscarNotificacaoPorId)
 );
-
 
 // =====================================================
 // MARCAR COMO LIDA / NÃO LIDA
@@ -126,9 +114,8 @@ router.patch(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  atualizarLeitura
+  asyncHandler(atualizarLeitura)
 );
-
 
 // =====================================================
 // EXCLUIR
@@ -143,9 +130,8 @@ router.delete(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  excluirNotificacao
+  asyncHandler(excluirNotificacao)
 );
-
 
 export default router;
 

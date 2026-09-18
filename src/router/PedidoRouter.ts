@@ -12,7 +12,11 @@ import {
 } from '../controller/PedidoController';
 
 import { autenticar } from '../middleware/AuthMiddleware';
+
 import { permitirPerfis } from '../middleware/RoleMiddleware';
+
+import { asyncHandler } from '../middleware/AsyncHandler';
+
 import { UserProfile } from '../model/usuario';
 
 const router = Router();
@@ -27,7 +31,7 @@ router.post(
   '/',
   autenticar,
   permitirPerfis(UserProfile.Cliente),
-  criarPedido
+  asyncHandler(criarPedido)
 );
 
 
@@ -40,7 +44,7 @@ router.get(
   '/',
   autenticar,
   permitirPerfis(UserProfile.ADMIN),
-  listarPedidos
+  asyncHandler(listarPedidos)
 );
 
 
@@ -51,6 +55,7 @@ router.get(
 // Cliente, admin e lojista podem acessar a rota.
 // A verificação de propriedade/permissão específica
 // deve ser feita no Controller.
+
 router.get(
   '/usuario/:usuarioId',
   autenticar,
@@ -59,7 +64,7 @@ router.get(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  listarPedidosPorUsuario
+  asyncHandler(listarPedidosPorUsuario)
 );
 
 
@@ -69,6 +74,7 @@ router.get(
 
 // Lojista, funcionário e admin podem visualizar
 // pedidos relacionados à loja.
+
 router.get(
   '/loja/:lojaId',
   autenticar,
@@ -77,7 +83,7 @@ router.get(
     UserProfile.Funcionario,
     UserProfile.ADMIN
   ),
-  listarPedidosPorLoja
+  asyncHandler(listarPedidosPorLoja)
 );
 
 
@@ -88,6 +94,7 @@ router.get(
 // Usuários autenticados podem consultar um pedido.
 // A regra de quem pode ver cada pedido pode ser
 // validada no Controller.
+
 router.get(
   '/:id',
   autenticar,
@@ -97,7 +104,7 @@ router.get(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  buscarPedidoPorId
+  asyncHandler(buscarPedidoPorId)
 );
 
 
@@ -106,6 +113,7 @@ router.get(
 // ======================================================
 
 // Lojista, funcionário e admin podem atualizar status.
+
 router.patch(
   '/:id/status',
   autenticar,
@@ -114,7 +122,7 @@ router.patch(
     UserProfile.Funcionario,
     UserProfile.ADMIN
   ),
-  atualizarStatusPedido
+  asyncHandler(atualizarStatusPedido)
 );
 
 
@@ -125,6 +133,7 @@ router.patch(
 // Cliente, lojista e admin podem solicitar cancelamento.
 // As regras de quando o cancelamento é permitido
 // continuam no PedidoService.
+
 router.delete(
   '/:id',
   autenticar,
@@ -133,7 +142,7 @@ router.delete(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  cancelarPedido
+  asyncHandler(cancelarPedido)
 );
 
 

@@ -12,23 +12,7 @@ import * as produtoRepository
 
 import { UserProfile } from '../model/usuario';
 
-
-// =====================================================
-// ERRO PADRONIZADO
-// =====================================================
-
-function erro(
-  mensagem: string,
-  status = 400
-) {
-
-  const error: any =
-    new Error(mensagem);
-
-  error.status = status;
-
-  return error;
-}
+import { AppError } from '../error/AppError';
 
 
 // =====================================================
@@ -46,22 +30,26 @@ export async function adicionarItem(
   // ---------------------------------------------------
 
   if (!usuarioId) {
-    throw erro(
+
+    throw new AppError(
       'usuarioId é obrigatório.'
     );
+
   }
 
   if (!produtoId) {
-    throw erro(
+
+    throw new AppError(
       'produtoId é obrigatório.'
     );
+
   }
 
   if (
     !Types.ObjectId.isValid(usuarioId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId inválido.'
     );
 
@@ -71,7 +59,7 @@ export async function adicionarItem(
     !Types.ObjectId.isValid(produtoId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'produtoId inválido.'
     );
 
@@ -84,7 +72,7 @@ export async function adicionarItem(
     quantidade < 1
   ) {
 
-    throw erro(
+    throw new AppError(
       'A quantidade deve ser um número inteiro maior que zero.'
     );
 
@@ -103,20 +91,19 @@ export async function adicionarItem(
 
   if (!usuario) {
 
-    throw erro(
+    throw new AppError(
       'Usuário não encontrado.',
       404
     );
 
   }
 
-
   if (
     usuario.perfil !==
     UserProfile.Cliente
   ) {
 
-    throw erro(
+    throw new AppError(
       'Apenas clientes podem utilizar o carrinho.'
     );
 
@@ -135,30 +122,37 @@ export async function adicionarItem(
 
   if (!produto) {
 
-    throw erro(
+    throw new AppError(
       'Produto não encontrado.',
       404
     );
 
   }
 
-
   if (!produto.ativo) {
 
-    throw erro(
+    throw new AppError(
       'Este produto está inativo.'
     );
 
   }
 
-
   if (
     produto.estoque < quantidade
   ) {
 
-    throw erro(
-      `Estoque insuficiente. Estoque disponível: ${produto.estoque}.`
-    );
+    const error =
+      new AppError(
+        `Estoque insuficiente. Estoque disponível: ${produto.estoque}.`
+      );
+
+    error.estoqueDisponivel =
+      produto.estoque;
+
+    error.quantidadeSolicitada =
+      quantidade;
+
+    throw error;
 
   }
 
@@ -252,9 +246,18 @@ export async function adicionarItem(
       produto.estoque
     ) {
 
-      throw erro(
-        `Quantidade solicitada ultrapassa o estoque. Estoque disponível: ${produto.estoque}.`
-      );
+      const error =
+        new AppError(
+          `Quantidade solicitada ultrapassa o estoque. Estoque disponível: ${produto.estoque}.`
+        );
+
+      error.estoqueDisponivel =
+        produto.estoque;
+
+      error.quantidadeSolicitada =
+        novaQuantidade;
+
+      throw error;
 
     }
 
@@ -315,18 +318,17 @@ export async function buscarCarrinho(
 
   if (!usuarioId) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId é obrigatório.'
     );
 
   }
 
-
   if (
     !Types.ObjectId.isValid(usuarioId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId inválido.'
     );
 
@@ -342,7 +344,7 @@ export async function buscarCarrinho(
 
   if (!usuario) {
 
-    throw erro(
+    throw new AppError(
       'Usuário não encontrado.',
       404
     );
@@ -355,7 +357,7 @@ export async function buscarCarrinho(
     UserProfile.Cliente
   ) {
 
-    throw erro(
+    throw new AppError(
       'Apenas clientes possuem carrinho.'
     );
 
@@ -463,7 +465,7 @@ export async function atualizarQuantidade(
 
   if (!usuarioId) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId é obrigatório.'
     );
 
@@ -471,7 +473,7 @@ export async function atualizarQuantidade(
 
   if (!produtoId) {
 
-    throw erro(
+    throw new AppError(
       'produtoId é obrigatório.'
     );
 
@@ -482,7 +484,7 @@ export async function atualizarQuantidade(
     !Types.ObjectId.isValid(usuarioId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId inválido.'
     );
 
@@ -493,7 +495,7 @@ export async function atualizarQuantidade(
     !Types.ObjectId.isValid(produtoId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'produtoId inválido.'
     );
 
@@ -507,7 +509,7 @@ export async function atualizarQuantidade(
     quantidade < 1
   ) {
 
-    throw erro(
+    throw new AppError(
       'A quantidade deve ser um número inteiro maior que zero.'
     );
 
@@ -527,7 +529,7 @@ export async function atualizarQuantidade(
 
   if (!carrinho) {
 
-    throw erro(
+    throw new AppError(
       'Carrinho não encontrado.',
       404
     );
@@ -551,7 +553,7 @@ export async function atualizarQuantidade(
 
   if (!itemExiste) {
 
-    throw erro(
+    throw new AppError(
       'Produto não encontrado no carrinho.',
       404
     );
@@ -572,7 +574,7 @@ export async function atualizarQuantidade(
 
   if (!produto) {
 
-    throw erro(
+    throw new AppError(
       'Produto não encontrado.',
       404
     );
@@ -582,7 +584,7 @@ export async function atualizarQuantidade(
 
   if (!produto.ativo) {
 
-    throw erro(
+    throw new AppError(
       'Este produto está inativo.'
     );
 
@@ -594,9 +596,18 @@ export async function atualizarQuantidade(
     produto.estoque
   ) {
 
-    throw erro(
-      `Estoque insuficiente. Estoque disponível: ${produto.estoque}.`
-    );
+    const error =
+      new AppError(
+        `Estoque insuficiente. Estoque disponível: ${produto.estoque}.`
+      );
+
+    error.estoqueDisponivel =
+      produto.estoque;
+
+    error.quantidadeSolicitada =
+      quantidade;
+
+    throw error;
 
   }
 
@@ -630,7 +641,7 @@ export async function removerItem(
 
   if (!usuarioId) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId é obrigatório.'
     );
 
@@ -638,7 +649,7 @@ export async function removerItem(
 
   if (!produtoId) {
 
-    throw erro(
+    throw new AppError(
       'produtoId é obrigatório.'
     );
 
@@ -649,7 +660,7 @@ export async function removerItem(
     !Types.ObjectId.isValid(usuarioId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId inválido.'
     );
 
@@ -660,7 +671,7 @@ export async function removerItem(
     !Types.ObjectId.isValid(produtoId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'produtoId inválido.'
     );
 
@@ -676,7 +687,7 @@ export async function removerItem(
 
   if (!carrinho) {
 
-    throw erro(
+    throw new AppError(
       'Carrinho não encontrado.',
       404
     );
@@ -696,7 +707,7 @@ export async function removerItem(
 
   if (!itemExiste) {
 
-    throw erro(
+    throw new AppError(
       'Produto não encontrado no carrinho.',
       404
     );
@@ -726,7 +737,7 @@ export async function limparCarrinho(
 
   if (!usuarioId) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId é obrigatório.'
     );
 
@@ -737,7 +748,7 @@ export async function limparCarrinho(
     !Types.ObjectId.isValid(usuarioId)
   ) {
 
-    throw erro(
+    throw new AppError(
       'usuarioId inválido.'
     );
 
@@ -753,7 +764,7 @@ export async function limparCarrinho(
 
   if (!carrinho) {
 
-    throw erro(
+    throw new AppError(
       'Carrinho não encontrado.',
       404
     );
@@ -767,4 +778,3 @@ export async function limparCarrinho(
     );
 
 }
-

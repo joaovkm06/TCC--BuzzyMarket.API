@@ -14,6 +14,8 @@ import { autenticar } from '../middleware/AuthMiddleware';
 
 import { permitirPerfis } from '../middleware/RoleMiddleware';
 
+import { asyncHandler } from '../middleware/AsyncHandler';
+
 import { UserProfile } from '../model/usuario';
 
 
@@ -30,7 +32,7 @@ router.post(
   permitirPerfis(
     UserProfile.Cliente
   ),
-  criarPagamento
+  asyncHandler(criarPagamento)
 );
 
 
@@ -44,7 +46,7 @@ router.get(
   permitirPerfis(
     UserProfile.ADMIN
   ),
-  listarPagamentos
+  asyncHandler(listarPagamentos)
 );
 
 
@@ -61,7 +63,7 @@ router.get(
     UserProfile.Funcionario,
     UserProfile.ADMIN
   ),
-  buscarPagamentoPorPedido
+  asyncHandler(buscarPagamentoPorPedido)
 );
 
 
@@ -78,7 +80,7 @@ router.get(
     UserProfile.Funcionario,
     UserProfile.ADMIN
   ),
-  buscarPagamentoPorId
+  asyncHandler(buscarPagamentoPorId)
 );
 
 
@@ -94,7 +96,7 @@ router.patch(
     UserProfile.Funcionario,
     UserProfile.ADMIN
   ),
-  atualizarStatusPagamento
+  asyncHandler(atualizarStatusPagamento)
 );
 
 
@@ -111,7 +113,7 @@ router.delete(
     UserProfile.Funcionario,
     UserProfile.ADMIN
   ),
-  cancelarPagamento
+  asyncHandler(cancelarPagamento)
 );
 
 

@@ -7,25 +7,7 @@ import * as notificacaoRepository
 import * as userRepository
   from '../repository/UserRepository';
 
-
-// =====================================================
-// ERRO PADRÃO
-// =====================================================
-
-function erro(
-  mensagem: string,
-  status = 400
-) {
-
-  const error: any = new Error(
-    mensagem
-  );
-
-  error.status = status;
-
-  return error;
-}
-
+import { AppError } from '../error/AppError';
 
 // =====================================================
 // TIPOS PERMITIDOS
@@ -38,7 +20,6 @@ const tiposPermitidos = [
   'sistema',
   'personalizada'
 ];
-
 
 // =====================================================
 // CRIAR NOTIFICAÇÃO
@@ -56,7 +37,6 @@ export async function criarNotificacao(
     tipo
   } = dados;
 
-
   // ===================================================
   // VALIDAÇÕES
   // ===================================================
@@ -68,12 +48,12 @@ export async function criarNotificacao(
     !tipo
   ) {
 
-    throw erro(
-      'usuarioId, titulo, mensagem e tipo são obrigatórios.'
+    throw new AppError(
+      'usuarioId, titulo, mensagem e tipo são obrigatórios.',
+      400
     );
 
   }
-
 
   if (
     !Types.ObjectId.isValid(
@@ -81,12 +61,12 @@ export async function criarNotificacao(
     )
   ) {
 
-    throw erro(
-      'usuarioId inválido.'
+    throw new AppError(
+      'usuarioId inválido.',
+      400
     );
 
   }
-
 
   if (remetenteId) {
 
@@ -96,14 +76,14 @@ export async function criarNotificacao(
       )
     ) {
 
-      throw erro(
-        'remetenteId inválido.'
+      throw new AppError(
+        'remetenteId inválido.',
+        400
       );
 
     }
 
   }
-
 
   // ===================================================
   // VALIDA TIPO
@@ -113,17 +93,16 @@ export async function criarNotificacao(
     !tiposPermitidos.includes(tipo)
   ) {
 
-    const error: any = erro(
-      'Tipo de notificação inválido.'
+    const error = new AppError(
+      'Tipo de notificação inválido.',
+      400
     );
 
-    error.tiposPermitidos =
-      tiposPermitidos;
+    error.tiposPermitidos = tiposPermitidos;
 
     throw error;
 
   }
-
 
   // ===================================================
   // VERIFICA DESTINATÁRIO
@@ -134,16 +113,14 @@ export async function criarNotificacao(
       usuarioId.toString()
     );
 
-
   if (!usuario) {
 
-    throw erro(
+    throw new AppError(
       'Usuário que receberá a notificação não encontrado.',
       404
     );
 
   }
-
 
   // ===================================================
   // VERIFICA REMETENTE
@@ -156,10 +133,9 @@ export async function criarNotificacao(
         remetenteId.toString()
       );
 
-
     if (!remetente) {
 
-      throw erro(
+      throw new AppError(
         'Usuário remetente não encontrado.',
         404
       );
@@ -167,7 +143,6 @@ export async function criarNotificacao(
     }
 
   }
-
 
   // ===================================================
   // CRIA NOTIFICAÇÃO
@@ -198,18 +173,15 @@ export async function criarNotificacao(
 
     });
 
-
   // ===================================================
   // RETORNA POPULADA
-  // =====================================================
+  // ===================================================
 
   return await notificacaoRepository
     .buscarNotificacaoPorId(
       notificacao._id.toString()
     );
-
 }
-
 
 // =====================================================
 // LISTAR TODAS
@@ -221,7 +193,6 @@ export async function listarNotificacoes() {
     .listarNotificacoes();
 
 }
-
 
 // =====================================================
 // BUSCAR POR ID
@@ -235,32 +206,28 @@ export async function buscarNotificacaoPorId(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da notificação inválido.'
+    throw new AppError(
+      'ID da notificação inválido.',
+      400
     );
 
   }
-
 
   const notificacao =
     await notificacaoRepository
       .buscarNotificacaoPorId(id);
 
-
   if (!notificacao) {
 
-    throw erro(
+    throw new AppError(
       'Notificação não encontrada.',
       404
     );
 
   }
 
-
   return notificacao;
-
 }
-
 
 // =====================================================
 // LISTAR POR USUÁRIO
@@ -274,12 +241,12 @@ export async function listarNotificacoesPorUsuario(
     !Types.ObjectId.isValid(usuarioId)
   ) {
 
-    throw erro(
-      'usuarioId inválido.'
+    throw new AppError(
+      'usuarioId inválido.',
+      400
     );
 
   }
-
 
   // ===================================================
   // VERIFICA USUÁRIO
@@ -290,16 +257,14 @@ export async function listarNotificacoesPorUsuario(
       usuarioId
     );
 
-
   if (!usuario) {
 
-    throw erro(
+    throw new AppError(
       'Usuário não encontrado.',
       404
     );
 
   }
-
 
   // ===================================================
   // BUSCA NOTIFICAÇÕES
@@ -311,7 +276,6 @@ export async function listarNotificacoesPorUsuario(
         usuarioId
       );
 
-
   // ===================================================
   // CONTADORES
   // ===================================================
@@ -319,13 +283,11 @@ export async function listarNotificacoesPorUsuario(
   const total =
     notificacoes.length;
 
-
   const naoLidas =
     notificacoes.filter(
       (notificacao: any) =>
         !notificacao.lida
     ).length;
-
 
   return {
 
@@ -346,9 +308,7 @@ export async function listarNotificacoesPorUsuario(
     notificacoes
 
   };
-
 }
-
 
 // =====================================================
 // MARCAR COMO LIDA / NÃO LIDA
@@ -363,49 +323,44 @@ export async function atualizarLeitura(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da notificação inválido.'
+    throw new AppError(
+      'ID da notificação inválido.',
+      400
     );
 
   }
-
 
   if (
     typeof lida !== 'boolean'
   ) {
 
-    throw erro(
-      'O campo lida deve ser true ou false.'
+    throw new AppError(
+      'O campo lida deve ser true ou false.',
+      400
     );
 
   }
-
 
   const notificacao =
     await notificacaoRepository
       .buscarNotificacaoSemPopulate(id);
 
-
   if (!notificacao) {
 
-    throw erro(
+    throw new AppError(
       'Notificação não encontrada.',
       404
     );
 
   }
 
-
   notificacao.lida = lida;
 
   await notificacao.save();
 
-
   return await notificacaoRepository
     .buscarNotificacaoPorId(id);
-
 }
-
 
 // =====================================================
 // MARCAR TODAS COMO LIDAS
@@ -419,12 +374,12 @@ export async function marcarTodasComoLidas(
     !Types.ObjectId.isValid(usuarioId)
   ) {
 
-    throw erro(
-      'usuarioId inválido.'
+    throw new AppError(
+      'usuarioId inválido.',
+      400
     );
 
   }
-
 
   // ===================================================
   // VERIFICA USUÁRIO
@@ -435,16 +390,14 @@ export async function marcarTodasComoLidas(
       usuarioId
     );
 
-
   if (!usuario) {
 
-    throw erro(
+    throw new AppError(
       'Usuário não encontrado.',
       404
     );
 
   }
-
 
   // ===================================================
   // MARCA TODAS
@@ -456,16 +409,13 @@ export async function marcarTodasComoLidas(
         usuarioId
       );
 
-
   return {
 
     notificacoesAtualizadas:
       resultado.modifiedCount
 
   };
-
 }
-
 
 // =====================================================
 // EXCLUIR
@@ -479,33 +429,29 @@ export async function excluirNotificacao(
     !Types.ObjectId.isValid(id)
   ) {
 
-    throw erro(
-      'ID da notificação inválido.'
+    throw new AppError(
+      'ID da notificação inválido.',
+      400
     );
 
   }
-
 
   const notificacao =
     await notificacaoRepository
       .buscarNotificacaoSemPopulate(id);
 
-
   if (!notificacao) {
 
-    throw erro(
+    throw new AppError(
       'Notificação não encontrada.',
       404
     );
 
   }
 
-
   await notificacaoRepository
     .excluirNotificacao(id);
 
-
   return true;
-
 }
 

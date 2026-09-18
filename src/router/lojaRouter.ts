@@ -19,12 +19,13 @@ import { autenticar }
 import { permitirPerfis }
   from '../middleware/RoleMiddleware';
 
+import { asyncHandler }
+  from '../middleware/AsyncHandler';
+
 import { UserProfile }
   from '../model/usuario';
 
-
 const router = Router();
-
 
 // ======================================================
 // LOJAS PÚBLICAS
@@ -36,9 +37,8 @@ const router = Router();
 
 router.get(
   '/',
-  listarLojas
+  asyncHandler(listarLojas)
 );
-
 
 // ======================================================
 // ROTAS DO LOJISTA
@@ -54,9 +54,8 @@ router.get(
   permitirPerfis(
     UserProfile.Logista
   ),
-  buscarMinhaLoja
+  asyncHandler(buscarMinhaLoja)
 );
-
 
 // ======================================================
 // CRIAR LOJA
@@ -68,9 +67,8 @@ router.post(
   permitirPerfis(
     UserProfile.Logista
   ),
-  criarLoja
+  asyncHandler(criarLoja)
 );
-
 
 // ======================================================
 // ATUALIZAR DADOS DA LOJA
@@ -83,9 +81,8 @@ router.put(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  atualizarLoja
+  asyncHandler(atualizarLoja)
 );
-
 
 // ======================================================
 // ATUALIZAR HORÁRIOS
@@ -98,9 +95,8 @@ router.put(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  atualizarHorarios
+  asyncHandler(atualizarHorarios)
 );
-
 
 // ======================================================
 // ROTAS DO ADMIN
@@ -116,9 +112,8 @@ router.patch(
   permitirPerfis(
     UserProfile.ADMIN
   ),
-  atualizarStatusLoja
+  asyncHandler(atualizarStatusLoja)
 );
-
 
 // ======================================================
 // VERIFICAR SE A LOJA ESTÁ ABERTA
@@ -126,9 +121,8 @@ router.patch(
 
 router.get(
   '/:id/aberta',
-  verificarLojaAberta
+  asyncHandler(verificarLojaAberta)
 );
-
 
 // ======================================================
 // BUSCAR LOJA POR ID
@@ -136,9 +130,8 @@ router.get(
 
 router.get(
   '/:id',
-  buscarLojaPorId
+  asyncHandler(buscarLojaPorId)
 );
-
 
 // ======================================================
 // EXCLUIR LOJA
@@ -151,9 +144,8 @@ router.delete(
     UserProfile.Logista,
     UserProfile.ADMIN
   ),
-  excluirLoja
+  asyncHandler(excluirLoja)
 );
-
 
 export default router;
 

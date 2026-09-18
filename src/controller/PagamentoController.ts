@@ -11,6 +11,8 @@ import { UserProfile } from '../model/usuario';
 import * as pedidoRepository
   from '../repository/PedidoRepository';
 
+import { AppError } from '../error/AppError';
+
 
 // =====================================================
 // CRIAR PAGAMENTO
@@ -21,62 +23,32 @@ export async function criarPagamento(
   res: Response
 ) {
 
-  try {
+  if (!req.usuario) {
 
-    const pagamento =
-      await pagamentoService
-        .criarPagamento(
-          req.body
-        );
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
 
 
-    return res.status(201).json({
-
-      mensagem:
-        'Pagamento criado com sucesso.',
-
-      pagamento
-
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao criar pagamento:',
-      error
+  const pagamento =
+    await pagamentoService.criarPagamento(
+      {
+        ...req.body,
+        usuarioId: req.usuario.id
+      }
     );
 
 
-    return res.status(
-      error.status || 500
-    ).json({
+  return res.status(201).json({
 
-      mensagem:
-        error.message ||
-        'Erro interno ao criar pagamento.',
+    mensagem:
+      'Pagamento criado com sucesso.',
 
-      ...(error.metodosPermitidos && {
-        metodosPermitidos:
-          error.metodosPermitidos
-      }),
+    pagamento
 
-      ...(error.pagamentoId && {
-        pagamentoId:
-          error.pagamentoId
-      }),
-
-      ...(error.valorPedido !== undefined && {
-        valorPedido:
-          error.valorPedido
-      }),
-
-      ...(error.valorInformado !== undefined && {
-        valorInformado:
-          error.valorInformado
-      })
-
-    });
-  }
+  });
 }
 
 
@@ -89,34 +61,13 @@ export async function listarPagamentos(
   res: Response
 ) {
 
-  try {
-
-    const pagamentos =
-      await pagamentoService
-        .listarPagamentos();
+  const pagamentos =
+    await pagamentoService.listarPagamentos();
 
 
-    return res.status(200).json(
-      pagamentos
-    );
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao buscar pagamentos:',
-      error
-    );
-
-
-    return res.status(500).json({
-
-      mensagem:
-        'Erro interno ao buscar pagamentos.',
-
-      erro: error.message
-
-    });
-  }
+  return res.status(200).json(
+    pagamentos
+  );
 }
 
 
@@ -129,127 +80,107 @@ export async function buscarPagamentoPorPedido(
   res: Response
 ) {
 
-  try {
+  if (!req.usuario) {
 
-    const pedidoId =
-      String(
-        req.params.pedidoId
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
+
+
+  const pedidoId =
+    String(
+      req.params.pedidoId
+    );
+
+
+  const pedido =
+    await pedidoRepository
+      .buscarPedidoSemPopulate(
+        pedidoId
       );
 
 
-    const pedido =
-      await pedidoRepository
-        .buscarPedidoSemPopulate(
-          pedidoId
-        );
+  if (!pedido) {
+
+    throw new AppError(
+      'Pedido não encontrado.',
+      404
+    );
+  }
 
 
-    if (!pedido) {
+  // =================================================
+  // ADMIN PODE ACESSAR QUALQUER PEDIDO
+  // =================================================
 
-      return res.status(404).json({
+  if (
+    req.usuario.perfil !==
+    UserProfile.ADMIN
+  ) {
 
-        mensagem:
-          'Pedido não encontrado.'
-
-      });
-    }
-
-
-    // =================================================
-    // ADMIN PODE ACESSAR QUALQUER PEDIDO
-    // =================================================
+    // ===============================================
+    // CLIENTE
+    // ===============================================
 
     if (
-      req.usuario?.perfil !==
-      UserProfile.ADMIN
+      req.usuario.perfil ===
+      UserProfile.Cliente
     ) {
 
-      // ===============================================
-      // CLIENTE
-      // ===============================================
-
       if (
-        req.usuario?.perfil ===
-        UserProfile.Cliente
+        String(pedido.usuarioId) !==
+        String(req.usuario.id)
       ) {
 
-        if (
-          String(pedido.usuarioId) !==
-          String(req.usuario.id)
-        ) {
-
-          return res.status(403).json({
-
-            mensagem:
-              'Você não tem permissão para acessar este pagamento.'
-
-          });
-        }
+        throw new AppError(
+          'Você não tem permissão para acessar este pagamento.',
+          403
+        );
       }
-
-
-      // ===============================================
-      // LOGISTA / FUNCIONÁRIO
-      // ===============================================
-
-      else if (
-
-        req.usuario?.perfil ===
-        UserProfile.Logista ||
-
-        req.usuario?.perfil ===
-        UserProfile.Funcionario
-
-      ) {
-
-        if (
-          !req.usuario.lojaId ||
-          String(pedido.lojaId) !==
-          String(req.usuario.lojaId)
-        ) {
-
-          return res.status(403).json({
-
-            mensagem:
-              'Você não tem permissão para acessar este pagamento.'
-
-          });
-        }
-
-      }
-
     }
 
 
-    const pagamento =
-      await pagamentoService
-        .buscarPagamentoPorPedido(
-          pedidoId
+    // ===============================================
+    // LOGISTA / FUNCIONÁRIO
+    // ===============================================
+
+    else if (
+
+      req.usuario.perfil ===
+      UserProfile.Logista ||
+
+      req.usuario.perfil ===
+      UserProfile.Funcionario
+
+    ) {
+
+      if (
+        !req.usuario.lojaId ||
+        String(pedido.lojaId) !==
+        String(req.usuario.lojaId)
+      ) {
+
+        throw new AppError(
+          'Você não tem permissão para acessar este pagamento.',
+          403
         );
-
-
-    return res.status(200).json(
-      pagamento
-    );
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao buscar pagamento:',
-      error
-    );
-
-
-    return res.status(
-      error.status || 500
-    ).json({
-
-      mensagem:
-        error.message ||
-        'Não foi possível buscar o pagamento.'
-
-    });
+      }
+    }
   }
+
+
+  const pagamento =
+    await pagamentoService
+      .buscarPagamentoPorPedido(
+        pedidoId
+      );
+
+
+  return res.status(200).json(
+    pagamento
+  );
 }
 
 
@@ -262,146 +193,122 @@ export async function buscarPagamentoPorId(
   res: Response
 ) {
 
-  try {
+  if (!req.usuario) {
 
-    const pagamento =
-      await pagamentoService
-        .buscarPagamentoPorId(
-
-          String(
-            req.params.id
-          )
-
-        );
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
 
 
-    if (!pagamento) {
-
-      return res.status(404).json({
-
-        mensagem:
-          'Pagamento não encontrado.'
-
-      });
-    }
-
-
-    // =================================================
-    // BUSCAR PEDIDO RELACIONADO
-    // =================================================
-
-    const pedidoId =
-      String(
-        pagamento.pedidoId
+  const pagamento =
+    await pagamentoService
+      .buscarPagamentoPorId(
+        String(
+          req.params.id
+        )
       );
 
 
-    const pedido =
-      await pedidoRepository
-        .buscarPedidoSemPopulate(
-          pedidoId
-        );
+  if (!pagamento) {
+
+    throw new AppError(
+      'Pagamento não encontrado.',
+      404
+    );
+  }
 
 
-    if (!pedido) {
+  // =================================================
+  // BUSCAR PEDIDO RELACIONADO
+  // =================================================
 
-      return res.status(404).json({
-
-        mensagem:
-          'Pedido relacionado ao pagamento não encontrado.'
-
-      });
-    }
+  const pedidoId =
+    String(
+      pagamento.pedidoId
+    );
 
 
-    // =================================================
-    // ADMIN
-    // =================================================
+  const pedido =
+    await pedidoRepository
+      .buscarPedidoSemPopulate(
+        pedidoId
+      );
+
+
+  if (!pedido) {
+
+    throw new AppError(
+      'Pedido relacionado ao pagamento não encontrado.',
+      404
+    );
+  }
+
+
+  // =================================================
+  // ADMIN
+  // =================================================
+
+  if (
+    req.usuario.perfil !==
+    UserProfile.ADMIN
+  ) {
+
+    // ===============================================
+    // CLIENTE
+    // ===============================================
 
     if (
-      req.usuario?.perfil !==
-      UserProfile.ADMIN
+      req.usuario.perfil ===
+      UserProfile.Cliente
     ) {
 
-      // ===============================================
-      // CLIENTE
-      // ===============================================
-
       if (
-        req.usuario?.perfil ===
-        UserProfile.Cliente
+        String(pedido.usuarioId) !==
+        String(req.usuario.id)
       ) {
 
-        if (
-          String(pedido.usuarioId) !==
-          String(req.usuario.id)
-        ) {
-
-          return res.status(403).json({
-
-            mensagem:
-              'Você não tem permissão para acessar este pagamento.'
-
-          });
-        }
+        throw new AppError(
+          'Você não tem permissão para acessar este pagamento.',
+          403
+        );
       }
-
-
-      // ===============================================
-      // LOGISTA / FUNCIONÁRIO
-      // ===============================================
-
-      else if (
-
-        req.usuario?.perfil ===
-        UserProfile.Logista ||
-
-        req.usuario?.perfil ===
-        UserProfile.Funcionario
-
-      ) {
-
-        if (
-          !req.usuario.lojaId ||
-          String(pedido.lojaId) !==
-          String(req.usuario.lojaId)
-        ) {
-
-          return res.status(403).json({
-
-            mensagem:
-              'Você não tem permissão para acessar este pagamento.'
-
-          });
-        }
-
-      }
-
     }
 
 
-    return res.status(200).json(
-      pagamento
-    );
+    // ===============================================
+    // LOGISTA / FUNCIONÁRIO
+    // ===============================================
 
-  } catch (error: any) {
+    else if (
 
-    console.error(
-      'Erro ao buscar pagamento:',
-      error
-    );
+      req.usuario.perfil ===
+      UserProfile.Logista ||
 
+      req.usuario.perfil ===
+      UserProfile.Funcionario
 
-    return res.status(
-      error.status || 500
-    ).json({
+    ) {
 
-      mensagem:
-        error.message ||
-        'Não foi possível buscar o pagamento.'
+      if (
+        !req.usuario.lojaId ||
+        String(pedido.lojaId) !==
+        String(req.usuario.lojaId)
+      ) {
 
-    });
+        throw new AppError(
+          'Você não tem permissão para acessar este pagamento.',
+          403
+        );
+      }
+    }
   }
+
+
+  return res.status(200).json(
+    pagamento
+  );
 }
 
 
@@ -414,150 +321,124 @@ export async function atualizarStatusPagamento(
   res: Response
 ) {
 
-  try {
+  if (!req.usuario) {
 
-    const pagamentoId =
-      String(
-        req.params.id
-      );
-
-
-    const pagamento =
-      await pagamentoService
-        .buscarPagamentoPorId(
-          pagamentoId
-        );
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
 
 
-    if (!pagamento) {
-
-      return res.status(404).json({
-
-        mensagem:
-          'Pagamento não encontrado.'
-
-      });
-    }
-
-
-    // =================================================
-    // BUSCAR PEDIDO
-    // =================================================
-
-    const pedido =
-      await pedidoRepository
-        .buscarPedidoSemPopulate(
-          String(
-            pagamento.pedidoId
-          )
-        );
-
-
-    if (!pedido) {
-
-      return res.status(404).json({
-
-        mensagem:
-          'Pedido relacionado ao pagamento não encontrado.'
-
-      });
-    }
-
-
-    // =================================================
-    // ADMIN
-    // =================================================
-
-    if (
-      req.usuario?.perfil !==
-      UserProfile.ADMIN
-    ) {
-
-      // Apenas logista e funcionário podem alterar
-      // o status de pagamento.
-
-      if (
-
-        req.usuario?.perfil !==
-        UserProfile.Logista &&
-
-        req.usuario?.perfil !==
-        UserProfile.Funcionario
-
-      ) {
-
-        return res.status(403).json({
-
-          mensagem:
-            'Você não tem permissão para alterar o status do pagamento.'
-
-        });
-      }
-
-
-      // Verifica se pertence à loja do usuário.
-
-      if (
-        !req.usuario.lojaId ||
-        String(pedido.lojaId) !==
-        String(req.usuario.lojaId)
-      ) {
-
-        return res.status(403).json({
-
-          mensagem:
-            'Você não tem permissão para alterar este pagamento.'
-
-        });
-      }
-
-    }
-
-
-    const pagamentoAtualizado =
-      await pagamentoService
-        .atualizarStatusPagamento(
-
-          pagamentoId,
-
-          req.body.status
-
-        );
-
-
-    return res.status(200).json({
-
-      mensagem:
-        'Status do pagamento atualizado com sucesso.',
-
-      pagamento:
-        pagamentoAtualizado
-
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao atualizar pagamento:',
-      error
+  const pagamentoId =
+    String(
+      req.params.id
     );
 
 
-    return res.status(
-      error.status || 500
-    ).json({
+  const pagamento =
+    await pagamentoService
+      .buscarPagamentoPorId(
+        pagamentoId
+      );
 
-      mensagem:
-        error.message ||
-        'Erro interno ao atualizar pagamento.',
 
-      ...(error.statusPermitidos && {
-        statusPermitidos:
-          error.statusPermitidos
-      })
+  if (!pagamento) {
 
-    });
+    throw new AppError(
+      'Pagamento não encontrado.',
+      404
+    );
   }
+
+
+  // =================================================
+  // BUSCAR PEDIDO
+  // =================================================
+
+  const pedido =
+    await pedidoRepository
+      .buscarPedidoSemPopulate(
+        String(
+          pagamento.pedidoId
+        )
+      );
+
+
+  if (!pedido) {
+
+    throw new AppError(
+      'Pedido relacionado ao pagamento não encontrado.',
+      404
+    );
+  }
+
+
+  // =================================================
+  // ADMIN
+  // =================================================
+
+  if (
+    req.usuario.perfil !==
+    UserProfile.ADMIN
+  ) {
+
+    // Apenas logista e funcionário podem alterar
+    // o status de pagamento.
+
+    if (
+
+      req.usuario.perfil !==
+      UserProfile.Logista &&
+
+      req.usuario.perfil !==
+      UserProfile.Funcionario
+
+    ) {
+
+      throw new AppError(
+        'Você não tem permissão para alterar o status do pagamento.',
+        403
+      );
+    }
+
+
+    // Verifica se pertence à loja do usuário.
+
+    if (
+      !req.usuario.lojaId ||
+      String(pedido.lojaId) !==
+      String(req.usuario.lojaId)
+    ) {
+
+      throw new AppError(
+        'Você não tem permissão para alterar este pagamento.',
+        403
+      );
+    }
+  }
+
+
+  const pagamentoAtualizado =
+    await pagamentoService
+      .atualizarStatusPagamento(
+
+        pagamentoId,
+
+        req.body.status
+
+      );
+
+
+  return res.status(200).json({
+
+    mensagem:
+      'Status do pagamento atualizado com sucesso.',
+
+    pagamento:
+      pagamentoAtualizado
+
+  });
 }
 
 
@@ -570,161 +451,134 @@ export async function cancelarPagamento(
   res: Response
 ) {
 
-  try {
+  if (!req.usuario) {
 
-    const pagamentoId =
-      String(
-        req.params.id
-      );
-
-
-    const pagamento =
-      await pagamentoService
-        .buscarPagamentoPorId(
-          pagamentoId
-        );
+    throw new AppError(
+      'Usuário não autenticado.',
+      401
+    );
+  }
 
 
-    if (!pagamento) {
-
-      return res.status(404).json({
-
-        mensagem:
-          'Pagamento não encontrado.'
-
-      });
-
-    }
-
-
-    // =================================================
-    // BUSCAR PEDIDO
-    // =================================================
-
-    const pedido =
-      await pedidoRepository
-        .buscarPedidoSemPopulate(
-          String(
-            pagamento.pedidoId
-          )
-        );
-
-
-    if (!pedido) {
-
-      return res.status(404).json({
-
-        mensagem:
-          'Pedido relacionado ao pagamento não encontrado.'
-
-      });
-
-    }
-
-
-    // =================================================
-    // ADMIN
-    // =================================================
-
-    if (
-      req.usuario?.perfil !==
-      UserProfile.ADMIN
-    ) {
-
-      // ===============================================
-      // CLIENTE
-      // ===============================================
-
-      if (
-        req.usuario?.perfil ===
-        UserProfile.Cliente
-      ) {
-
-        if (
-          String(pedido.usuarioId) !==
-          String(req.usuario.id)
-        ) {
-
-          return res.status(403).json({
-
-            mensagem:
-              'Você não tem permissão para cancelar este pagamento.'
-
-          });
-
-        }
-
-      }
-
-
-      // ===============================================
-      // LOGISTA / FUNCIONÁRIO
-      // ===============================================
-
-      else if (
-
-        req.usuario?.perfil ===
-        UserProfile.Logista ||
-
-        req.usuario?.perfil ===
-        UserProfile.Funcionario
-
-      ) {
-
-        if (
-          !req.usuario.lojaId ||
-          String(pedido.lojaId) !==
-          String(req.usuario.lojaId)
-        ) {
-
-          return res.status(403).json({
-
-            mensagem:
-              'Você não tem permissão para cancelar este pagamento.'
-
-          });
-
-        }
-
-      }
-
-    }
-
-
-    const pagamentoCancelado =
-      await pagamentoService
-        .cancelarPagamento(
-          pagamentoId
-        );
-
-
-    return res.status(200).json({
-
-      mensagem:
-        'Pagamento cancelado com sucesso.',
-
-      pagamento:
-        pagamentoCancelado
-
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      'Erro ao cancelar pagamento:',
-      error
+  const pagamentoId =
+    String(
+      req.params.id
     );
 
 
-    return res.status(
-      error.status || 500
-    ).json({
+  const pagamento =
+    await pagamentoService
+      .buscarPagamentoPorId(
+        pagamentoId
+      );
 
-      mensagem:
-        error.message ||
-        'Erro interno ao cancelar pagamento.'
 
-    });
+  if (!pagamento) {
+
+    throw new AppError(
+      'Pagamento não encontrado.',
+      404
+    );
   }
+
+
+  // =================================================
+  // BUSCAR PEDIDO
+  // =================================================
+
+  const pedido =
+    await pedidoRepository
+      .buscarPedidoSemPopulate(
+        String(
+          pagamento.pedidoId
+        )
+      );
+
+
+  if (!pedido) {
+
+    throw new AppError(
+      'Pedido relacionado ao pagamento não encontrado.',
+      404
+    );
+  }
+
+
+  // =================================================
+  // ADMIN
+  // =================================================
+
+  if (
+    req.usuario.perfil !==
+    UserProfile.ADMIN
+  ) {
+
+    // ===============================================
+    // CLIENTE
+    // ===============================================
+
+    if (
+      req.usuario.perfil ===
+      UserProfile.Cliente
+    ) {
+
+      if (
+        String(pedido.usuarioId) !==
+        String(req.usuario.id)
+      ) {
+
+        throw new AppError(
+          'Você não tem permissão para cancelar este pagamento.',
+          403
+        );
+      }
+    }
+
+
+    // ===============================================
+    // LOGISTA / FUNCIONÁRIO
+    // ===============================================
+
+    else if (
+
+      req.usuario.perfil ===
+      UserProfile.Logista ||
+
+      req.usuario.perfil ===
+      UserProfile.Funcionario
+
+    ) {
+
+      if (
+        !req.usuario.lojaId ||
+        String(pedido.lojaId) !==
+        String(req.usuario.lojaId)
+      ) {
+
+        throw new AppError(
+          'Você não tem permissão para cancelar este pagamento.',
+          403
+        );
+      }
+    }
+  }
+
+
+  const pagamentoCancelado =
+    await pagamentoService
+      .cancelarPagamento(
+        pagamentoId
+      );
+
+
+  return res.status(200).json({
+
+    mensagem:
+      'Pagamento cancelado com sucesso.',
+
+    pagamento:
+      pagamentoCancelado
+
+  });
 }
 
